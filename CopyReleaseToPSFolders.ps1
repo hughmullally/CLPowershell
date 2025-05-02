@@ -1,6 +1,8 @@
-# Import the logging module
+# Import the modules
 $modulePath = Join-Path $PSScriptRoot "Logging.psm1"
 Import-Module $modulePath -Force
+$validationPath = Join-Path $PSScriptRoot "Validation.psm1"
+Import-Module $validationPath -Force
 
 # Load configuration
 function Get-Configuration {
@@ -14,6 +16,7 @@ function Get-Configuration {
 
     try {
         $config = Get-Content -Path $configPath -Raw | ConvertFrom-Json
+        Test-Configuration -Config $config
         return $config
     }
     catch {
@@ -28,12 +31,21 @@ function GetReleaseRootFolder {
         $logger
     )
 
-    $parts = $release.Split(".")
-    $firstPart = $parts[0].Trim()
-    $secondPart = $parts[1].Trim()
-    $releaseRootFolder = "$rootFolder\$firstPart.$secondPart"
-    $logger.Debug("Release root folder: $releaseRootFolder")
-    return $releaseRootFolder
+    try {
+        Test-ReleaseFormat -Release $release | Out-Null
+        Test-FolderPermissions -Path $rootFolder -Permission 'Read' | Out-Null
+
+        $parts = $release.Split(".")
+        $firstPart = $parts[0].Trim()
+        $secondPart = $parts[1].Trim()
+        $releaseRootFolder = "$rootFolder\$firstPart.$secondPart"
+        $logger.Debug("Release root folder: $releaseRootFolder")
+        return $releaseRootFolder
+    }
+    catch {
+        $logger.Error("Error in GetReleaseRootFolder: $_")
+        throw
+    }
 }
 
 function getReleaseFolder {
@@ -43,19 +55,27 @@ function getReleaseFolder {
         $logger
     )
 
-    $folders = Get-ChildItem -Path $releaseRootFolder -Directory
-    $release = $release.Replace("V", "")
+    try {
+        Test-FolderPermissions -Path $releaseRootFolder -Permission 'Read' | Out-Null
 
-    $releaseFolder = ""
-    foreach ($folder in $folders) {
-        $folderRelease =  $folder.Name.Split('V')[-1]      
-        if ($release -eq $folderRelease) {
-            $releaseFolder = $folder
-            $logger.Debug("Found release folder: $($folder.FullName)")
-            break;
+        $folders = Get-ChildItem -Path $releaseRootFolder -Directory
+        $release = $release.Replace("V", "")
+
+        $releaseFolder = ""
+        foreach ($folder in $folders) {
+            $folderRelease =  $folder.Name.Split('V')[-1]      
+            if ($release -eq $folderRelease) {
+                $releaseFolder = $folder
+                $logger.Debug("Found release folder: $($folder.FullName)")
+                break;
+            }
         }
+        return $releaseFolder
     }
-    return $releaseFolder
+    catch {
+        $logger.Error("Error in getReleaseFolder: $_")
+        throw
+    }
 }
 
 function get-target-root-folder {
@@ -65,9 +85,17 @@ function get-target-root-folder {
         $logger
     )
 
-    $targetFolder = "$gitRootFolder\\$client\\release"
-    $logger.Debug("Target root folder: $targetFolder")
-    return $targetFolder
+    try {
+        Test-FolderPermissions -Path $gitRootFolder -Permission 'Write' | Out-Null
+
+        $targetFolder = "$gitRootFolder\\$client\\release"
+        $logger.Debug("Target root folder: $targetFolder")
+        return $targetFolder
+    }
+    catch {
+        $logger.Error("Error in get-target-root-folder: $_")
+        throw
+    }
 }
 
 function processRelease {
@@ -80,41 +108,50 @@ function processRelease {
         $logger
     )
 
-    $release = $release.TrimStart()
-    $releaseFolder = GetReleaseFolder -releaseRootFolder $releaseRootFolder -release $release -logger $logger
+    try {
+        $release = $release.TrimStart()
+        $releaseFolder = GetReleaseFolder -releaseRootFolder $releaseRootFolder -release $release -logger $logger
 
-    if ( $releaseFolder -eq "") {
-        $logger.Error("Release folder not found for release: $release")
-        return
-    }
+        if ( $releaseFolder -eq "") {
+            $logger.Error("Release folder not found for release: $release")
+            return
+        }
 
-    $targetRootFolder = get-target-root-folder $client -gitRootFolder $gitRootFolder -logger $logger
+        $targetRootFolder = get-target-root-folder $client -gitRootFolder $gitRootFolder -logger $logger
 
-    foreach ($mapping in $folderMappings) {
-        $sourceFolder = $mapping.sourceFolder
-        $logger.Debug("Processing mapping: $sourceFolder")
-        $fullSourceFolder = "${releaseFolder}${sourceFolder}"
-        $targetFolder = "$targetRootFolder\$($mapping.targetFolder)"
-        $logger.Information("Processing Source: $fullSourceFolder -> Target: $targetFolder")
-        
-        if (Test-Path -Path $fullSourceFolder  -PathType Container) {
-            # Get files from the source folder
-            $files = Get-ChildItem -Path $fullSourceFolder -File
+        foreach ($mapping in $folderMappings) {
+            $sourceFolder = $mapping.sourceFolder
+            $logger.Debug("Processing mapping: $sourceFolder")
+            $fullSourceFolder = "${releaseFolder}${sourceFolder}"
+            $targetFolder = "$targetRootFolder\$($mapping.targetFolder)"
+            $logger.Information("Processing Source: $fullSourceFolder -> Target: $targetFolder")
             
-            # Copy each file to the target folder
-            foreach ($file in $files) {
-                try {
-                    Copy-Item -Path $file.FullName -Destination $targetFolder -Force
-                    $logger.Information("Copied file: $($file.Name) to $targetFolder")
-                }
-                catch {
-                    $logger.Error("Failed to copy file $($file.Name): $_")
+            if (Test-Path -Path $fullSourceFolder  -PathType Container) {
+                # Get files from the source folder
+                $files = Get-ChildItem -Path $fullSourceFolder -File
+                
+                # Copy each file to the target folder
+                foreach ($file in $files) {
+                    try {
+                        Test-FileSize -Path $file.FullName -MaxSizeMB 100 | Out-Null
+                        Copy-Item -Path $file.FullName -Destination $targetFolder -Force | Out-Null
+                        $logger.Information("Copied file: $($file.Name) to $targetFolder")
+                    }
+                    catch {
+                        $logger.Error("Failed to copy file $($file.Name): $_")
+                        # Continue with next file instead of failing the entire process
+                        continue
+                    }
                 }
             }
+            else {
+                $logger.Warning("Skipping folder for release $release : $fullSourceFolder")
+            }
         }
-        else {
-            $logger.Warning("Skipping folder for release $release : $fullSourceFolder")
-        }
+    }
+    catch {
+        $logger.Error("Error in processRelease: $_")
+        throw
     }
 }
 
@@ -157,7 +194,12 @@ function CopyReleaseFilesToPSFolders {
         $logger = New-Logger -LogPath $config.logging.logPath -LogLevel $logLevel
         $logger.Information("Starting CopyReleaseFilesToPSFolders for client: $targetClient")
 
+        # Validate all releases before processing
         $releases = $release.Split(',')
+        foreach ($release in $releases) {
+            Test-ReleaseFormat -Release $release
+        }
+
         foreach ($release in $releases) {
             $release = "V" + $release.TrimStart()
             $logger.Information("Processing Release: $release")
@@ -181,6 +223,22 @@ function CopyReleaseFilesToPSFolders {
         }
         throw
     }
+}
+
+
+# Get release number from user
+function test-get-release-number {
+    release = Read-Host "Enter release number (e.g., 9.2.0 or 9.2.4.0)"
+    $release = $release.Trim()  # Trim any leading/trailing spaces
+
+    # Validate release format
+    try {
+        Test-ReleaseFormat -Release $release
+    } catch {
+        Write-Error $_.Exception.Message
+        exit 1
+    }
+
 }
 
 # Example usage
