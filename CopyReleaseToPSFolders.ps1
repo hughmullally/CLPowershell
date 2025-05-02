@@ -4,6 +4,9 @@ Import-Module $modulePath -Force
 $validationPath = Join-Path $PSScriptRoot "Validation.psm1"
 Import-Module $validationPath -Force
 
+# Global variable to track files and their releases
+$script:fileReleaseTracker = @{}
+
 # Load configuration
 function Get-Configuration {
     param (
@@ -134,6 +137,12 @@ function processRelease {
                 foreach ($file in $files) {
                     try {
                         Test-FileSize -Path $file.FullName -MaxSizeMB 100 | Out-Null
+                        $relativePath = $file.FullName.Substring($releaseFolder.Length)
+                        $targetFilePath = Join-Path $targetFolder $file.Name
+                        
+                        # Track the file and its release
+                        $script:fileReleaseTracker[$targetFilePath] = $release
+                        
                         Copy-Item -Path $file.FullName -Destination $targetFolder -Force | Out-Null
                         $logger.Information("Copied file: $($file.Name) to $targetFolder")
                     }
@@ -194,6 +203,9 @@ function CopyReleaseFilesToPSFolders {
         $logger = New-Logger -LogPath $config.logging.logPath -LogLevel $logLevel
         $logger.Information("Starting CopyReleaseFilesToPSFolders for client: $targetClient")
 
+        # Reset the file tracker
+        $script:fileReleaseTracker = @{}
+
         # Validate all releases before processing
         $releases = $release.Split(',')
         foreach ($release in $releases) {
@@ -213,6 +225,13 @@ function CopyReleaseFilesToPSFolders {
             processRelease -releaseRootFolder $releaseRootFolder -release $release -client $targetClient -gitRootFolder $gitRootFolder -folderMappings $config.folderMappings -logger $logger
         }
 
+        # Generate CSV report
+        $csvPath = Join-Path $gitRootFolder "$targetClient\release\file_releases.csv"
+        $fileReleaseTracker.GetEnumerator() | 
+            Select-Object @{Name='File'; Expression={$_.Key}}, @{Name='Release'; Expression={$_.Value}} |
+            Export-Csv -Path $csvPath -NoTypeInformation
+        
+        $logger.Information("Generated file release report at: $csvPath")
         $logger.Information("Completed CopyReleaseFilesToPSFolders for client: $targetClient")
     }
     catch {
@@ -223,6 +242,7 @@ function CopyReleaseFilesToPSFolders {
         }
         throw
     }
+
 }
 
 
@@ -243,3 +263,171 @@ function test-get-release-number {
 
 # Example usage
 CopyReleaseFilesToPSFolders -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
+
+<#
+.SYNOPSIS
+    Tests the integrity of copied release files.
+.DESCRIPTION
+    This function verifies that files copied during the release process match their source files.
+    It checks file existence, sizes, and optionally file contents by comparing source and destination folders directly.
+.PARAMETER targetClient
+    The target client name.
+.PARAMETER release
+    The release version to check (e.g., "9.2.0").
+.PARAMETER configPath
+    Path to the configuration file.
+.PARAMETER checkContents
+    If true, performs a hash comparison of file contents.
+.EXAMPLE
+    Test-ReleaseCopyIntegrity -TargetClient "Drax" -Release "9.2.0" -CheckContents $true
+#>
+function Test-ReleaseCopyIntegrity {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string] $targetClient,
+        
+        [Parameter(Mandatory=$true)]
+        [string] $release,
+        
+        [string] $configPath = ".\config.json",
+        
+        [bool] $checkContents = $false
+    )
+
+    $logger = $null
+    try {
+        $config = Get-Configuration -configPath $configPath
+        $rootFolder = $config.defaultPaths.rootFolder
+        $gitRootFolder = $config.defaultPaths.gitRootFolder
+
+        # Initialize logger
+        $logLevel = $LogLevel.Information
+        if ($config.logging.logLevel) {
+            $logLevel = $LogLevel.($config.logging.logLevel)
+        }
+        $logger = New-Logger -LogPath $config.logging.logPath -LogLevel $logLevel
+        $logger.Information("Starting integrity check for client: $targetClient, release: $release")
+
+        # Get source and target folders
+        $releaseRootFolder = GetReleaseRootFolder -rootFolder $rootFolder -release $release -logger $logger
+        $releaseFolder = GetReleaseFolder -releaseRootFolder $releaseRootFolder -release $release -logger $logger
+        $targetRootFolder = get-target-root-folder -gitRootFolder $gitRootFolder -client $targetClient -logger $logger
+
+        if (-not $releaseFolder) {
+            throw "Source release folder not found for release: $release"
+        }
+
+        $results = @()
+        $errors = 0
+
+        # Process each folder mapping
+        foreach ($mapping in $config.folderMappings) {
+            $sourceFolder = Join-Path $releaseFolder.FullName $mapping.sourceFolder
+            $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
+
+            if (-not (Test-Path $sourceFolder)) {
+                $logger.Warning("Source folder not found: $sourceFolder")
+                continue
+            }
+
+            if (-not (Test-Path $targetFolder)) {
+                $logger.Warning("Target folder not found: $targetFolder")
+                continue
+            }
+
+            # Get all files in source folder
+            $sourceFiles = Get-ChildItem -Path $sourceFolder -File -Recurse
+            $targetFiles = Get-ChildItem -Path $targetFolder -File -Recurse
+
+            # Create a hashtable of target files for quick lookup
+            $targetFileLookup = @{}
+            foreach ($file in $targetFiles) {
+                $relativePath = $file.FullName.Substring($targetFolder.Length)
+                $targetFileLookup[$relativePath] = $file
+            }
+
+            # Check each source file
+            foreach ($sourceFile in $sourceFiles) {
+                $relativePath = $sourceFile.FullName.Substring($sourceFolder.Length)
+                $result = [PSCustomObject]@{
+                    File = $relativePath
+                    Release = $release
+                    Status = "OK"
+                    Details = ""
+                }
+
+                # Check if file exists in target
+                if (-not $targetFileLookup.ContainsKey($relativePath)) {
+                    $result.Status = "ERROR"
+                    $result.Details = "File not found in target"
+                    $errors++
+                    $results += $result
+                    continue
+                }
+
+                $targetFile = $targetFileLookup[$relativePath]
+
+                # Compare file sizes
+                if ($sourceFile.Length -ne $targetFile.Length) {
+                    $result.Status = "ERROR"
+                    $result.Details = "File size mismatch. Source: $($sourceFile.Length) bytes, Target: $($targetFile.Length) bytes"
+                    $errors++
+                    $results += $result
+                    continue
+                }
+
+                # Optionally compare file contents
+                if ($checkContents) {
+                    $sourceHash = Get-FileHash -Path $sourceFile.FullName -Algorithm SHA256
+                    $targetHash = Get-FileHash -Path $targetFile.FullName -Algorithm SHA256
+                    
+                    if ($sourceHash.Hash -ne $targetHash.Hash) {
+                        $result.Status = "ERROR"
+                        $result.Details = "File content mismatch"
+                        $errors++
+                        $results += $result
+                        continue
+                    }
+                }
+
+                $results += $result
+            }
+
+            # Check for extra files in target that shouldn't be there
+            foreach ($targetFile in $targetFiles) {
+                $relativePath = $targetFile.FullName.Substring($targetFolder.Length)
+                $sourcePath = Join-Path $sourceFolder $relativePath
+                
+                if (-not (Test-Path $sourcePath)) {
+                    $result = [PSCustomObject]@{
+                        File = $relativePath
+                        Release = $release
+                        Status = "WARNING"
+                        Details = "Extra file found in target that doesn't exist in source"
+                    }
+                    $results += $result
+                }
+            }
+        }
+
+        # Generate report
+        $reportPath = Join-Path $gitRootFolder "$targetClient\release\integrity_report_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+        $results | Export-Csv -Path $reportPath -NoTypeInformation
+
+        $logger.Information("Integrity check completed. Found $errors errors.")
+        $logger.Information("Report generated at: $reportPath")
+
+        return $results
+    }
+    catch {
+        if ($logger) {
+            $logger.Error("An error occurred during integrity check: $_")
+        } else {
+            Write-Error "An error occurred before logger initialization: $_"
+        }
+        throw
+    }
+}
+
+# Example usage
+# Test-ReleaseCopyIntegrity -TargetClient "Drax" -Release "9.2.0" -CheckContents $true
