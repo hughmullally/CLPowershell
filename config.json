@@ -1,52 +1,20 @@
 {
-    "folderMappings": [
-        {
-            "sourceFolder": "\\Core Components\\Database Scripts\\1. Upgrade Release Script Files",
-            "targetFolder": "01 Database Scripts\\01 Upgrade Scripts"
-        },
-        {
-            "sourceFolder": "\\Core Components\\Loaders",
-            "targetFolder": "\\04 Loaders\\Standard Packages"
-        },
-        {
-            "sourceFolder": "\\Core Components\\RiskCubed Portal\\RiskCubed",
-            "targetFolder": "\\02 RiskCubedKit"
-        },
-        {
-            "sourceFolder": "\\Core Components\\RiskCubed Portal\\RiskCubedAPI Kit",
-            "targetFolder": "\\02 RiskCubedKit"
-        },
-        {
-            "sourceFolder": "\\Credit Risk\\Cube DB",
-            "targetFolder": "\\03 Cubes"
-        },
-        {
-            "sourceFolder": "\\Credit Risk\\Reports\\Cube Reports",
-            "targetFolder": "\\05 Standard Reports\\01 Cube Reports"
-        },
-        {
-            "sourceFolder": "\\Credit Risk\\DataMart Reports",
-            "targetFolder": "\\05 Standard Reports\\01 Cube Reports"
-        },
-        {
-            "sourceFolder": "\\Credit Risk\\Reports\\DataMart Reports",
-            "targetFolder": "\\05 Standard Reports\\02 DataMart Reports"
-        },
-        {
-            "sourceFolder": "\\Credit Risk\\Reports\\PowerBI",
-            "targetFolder": "\\05 Standard Reports\\03 PowerBI"
-        },
-        {
-            "sourceFolder": "\\Credit Risk\\Workflow XML",
-            "targetFolder": "\\06 Standard Workflows"
-        }
-    ],
-    "defaultPaths": {
-        "rootFolder": "c:\\releases",
-        "gitRootFolder": "c:\\Git"
+  "folderMappings": [
+    {
+      "targetFolder": "scripts",
+      "sourceFolder": "\\Scripts"
     },
-    "logging": {
-        "logPath": "c:\\logs",
-        "logLevel": "Information"
+    {
+      "targetFolder": "config",
+      "sourceFolder": "\\Config"
     }
-} 
+  ],
+  "logging": {
+    "logPath": ".\\logs\\deployment.log",
+    "logLevel": "Information"
+  },
+  "defaultPaths": {
+    "rootFolder": "C:\\Releases",
+    "gitRootFolder": "C:\\Git\\ClientReleases"
+  }
+}

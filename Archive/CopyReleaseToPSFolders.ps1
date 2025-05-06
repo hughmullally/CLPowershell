@@ -484,4 +484,4 @@ function Test-ReleaseCopyIntegrity {
 }
 
 # Example usage
-Test-ReleaseCopyIntegrity -TargetClient "Drax" -Releases "9.2.0,9.2.4.0,9.2.4.5" -CheckContents $true
+# Test-ReleaseCopyIntegrity -TargetClient "Drax" -Releases "9.2.0,9.2.4.0,9.2.4.5" -CheckContents $true
