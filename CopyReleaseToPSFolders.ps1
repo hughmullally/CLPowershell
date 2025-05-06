@@ -41,7 +41,7 @@ function GetReleaseRootFolder {
         $parts = $release.Split(".")
         $firstPart = $parts[0].Trim()
         $secondPart = $parts[1].Trim()
-        $releaseRootFolder = "$rootFolder\$firstPart.$secondPart"
+        $releaseRootFolder = "$rootFolder\V$firstPart.$secondPart"
         $logger.Debug("Release root folder: $releaseRootFolder")
         return $releaseRootFolder
     }
@@ -91,7 +91,7 @@ function get-target-root-folder {
     try {
         Test-FolderPermissions -Path $gitRootFolder -Permission 'Write' | Out-Null
 
-        $targetFolder = "$gitRootFolder\\$client\\release"
+        $targetFolder = "$gitRootFolder\$client\release"
         $logger.Debug("Target root folder: $targetFolder")
         return $targetFolder
     }
@@ -262,7 +262,34 @@ function test-get-release-number {
 }
 
 # Example usage
-CopyReleaseFilesToPSFolders -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
+# CopyReleaseFilesToPSFolders -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
+
+<#
+.SYNOPSIS
+    Sorts release versions in descending order (newest first).
+.DESCRIPTION
+    Takes a list of release versions and sorts them in descending order,
+    properly handling version numbers like 9.4.0, 9.4.2, 9.4.2.5.
+.PARAMETER releases
+    Array of release versions to sort.
+.EXAMPLE
+    Sort-ReleaseVersions -Releases @("9.4.0", "9.4.2", "9.4.2.5")
+#>
+function Sort-ReleaseVersions {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string[]] $releases
+    )
+
+    return $releases | ForEach-Object {
+        # Convert version string to array of integers for proper comparison
+        $versionParts = $_ -replace '^V', '' -split '\.'
+        [PSCustomObject]@{
+            Original = $_
+            Version = [version]::new($versionParts -join '.')
+        }
+    } | Sort-Object -Property Version -Descending | ForEach-Object { $_.Original }
+}
 
 <#
 .SYNOPSIS
@@ -270,16 +297,18 @@ CopyReleaseFilesToPSFolders -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4
 .DESCRIPTION
     This function verifies that files copied during the release process match their source files.
     It checks file existence, sizes, and optionally file contents by comparing source and destination folders directly.
+    Handles cascading releases by checking multiple releases in order of version number.
 .PARAMETER targetClient
     The target client name.
-.PARAMETER release
-    The release version to check (e.g., "9.2.0").
+.PARAMETER releases
+    Comma-separated list of releases to check (e.g., "9.4.0,9.4.2,9.4.2.5").
+    Releases will be automatically sorted by version number.
 .PARAMETER configPath
     Path to the configuration file.
 .PARAMETER checkContents
     If true, performs a hash comparison of file contents.
 .EXAMPLE
-    Test-ReleaseCopyIntegrity -TargetClient "Drax" -Release "9.2.0" -CheckContents $true
+    Test-ReleaseCopyIntegrity -TargetClient "Drax" -Releases "9.4.0,9.4.2,9.4.2.5" -CheckContents $true
 #>
 function Test-ReleaseCopyIntegrity {
     param (
@@ -287,7 +316,7 @@ function Test-ReleaseCopyIntegrity {
         [string] $targetClient,
         
         [Parameter(Mandatory=$true)]
-        [string] $release,
+        [string] $releases,
         
         [string] $configPath = ".\config.json",
         
@@ -306,106 +335,131 @@ function Test-ReleaseCopyIntegrity {
             $logLevel = $LogLevel.($config.logging.logLevel)
         }
         $logger = New-Logger -LogPath $config.logging.logPath -LogLevel $logLevel
-        $logger.Information("Starting integrity check for client: $targetClient, release: $release")
+        $logger.Information("Starting integrity check for client: $targetClient, releases: $releases")
 
-        # Get source and target folders
-        $releaseRootFolder = GetReleaseRootFolder -rootFolder $rootFolder -release $release -logger $logger
-        $releaseFolder = GetReleaseFolder -releaseRootFolder $releaseRootFolder -release $release -logger $logger
+        # Get target root folder
         $targetRootFolder = get-target-root-folder -gitRootFolder $gitRootFolder -client $targetClient -logger $logger
-
-        if (-not $releaseFolder) {
-            throw "Source release folder not found for release: $release"
-        }
 
         $results = @()
         $errors = 0
+        $processedFiles = @{}  # Track which files we've already checked
 
-        # Process each folder mapping
-        foreach ($mapping in $config.folderMappings) {
-            $sourceFolder = Join-Path $releaseFolder.FullName $mapping.sourceFolder
-            $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
+        # Process releases in version order (newest first)
+        $releaseList = $releases.Split(',') | ForEach-Object { $_.Trim() }
+        $sortedReleases = Sort-ReleaseVersions -Releases $releaseList
+        $logger.Information("Processing releases in order: $($sortedReleases -join ', ')")
 
-            if (-not (Test-Path $sourceFolder)) {
-                $logger.Warning("Source folder not found: $sourceFolder")
+        foreach ($release in $sortedReleases) {
+            $logger.Information("Processing release: $release")
+            
+            # Get source folders
+        $releaseRootFolder = GetReleaseRootFolder -rootFolder $rootFolder -release $release -logger $logger
+            $releaseFolder = GetReleaseFolder -releaseRootFolder $releaseRootFolder -release $release -logger $logger
+
+            if (-not $releaseFolder) {
+                $logger.Warning("Source release folder not found for release: $release")
                 continue
             }
 
-            if (-not (Test-Path $targetFolder)) {
-                $logger.Warning("Target folder not found: $targetFolder")
-                continue
-            }
+            # Process each folder mapping
+            foreach ($mapping in $config.folderMappings) {
+                $sourceFolder = Join-Path $releaseFolder.FullName $mapping.sourceFolder
+                $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
 
-            # Get all files in source folder
-            $sourceFiles = Get-ChildItem -Path $sourceFolder -File -Recurse
-            $targetFiles = Get-ChildItem -Path $targetFolder -File -Recurse
-
-            # Create a hashtable of target files for quick lookup
-            $targetFileLookup = @{}
-            foreach ($file in $targetFiles) {
-                $relativePath = $file.FullName.Substring($targetFolder.Length)
-                $targetFileLookup[$relativePath] = $file
-            }
-
-            # Check each source file
-            foreach ($sourceFile in $sourceFiles) {
-                $relativePath = $sourceFile.FullName.Substring($sourceFolder.Length)
-                $result = [PSCustomObject]@{
-                    File = $relativePath
-                    Release = $release
-                    Status = "OK"
-                    Details = ""
-                }
-
-                # Check if file exists in target
-                if (-not $targetFileLookup.ContainsKey($relativePath)) {
-                    $result.Status = "ERROR"
-                    $result.Details = "File not found in target"
-                    $errors++
-                    $results += $result
+                if (-not (Test-Path $sourceFolder)) {
+                    $logger.Warning("Source folder not found: $sourceFolder")
                     continue
                 }
 
-                $targetFile = $targetFileLookup[$relativePath]
-
-                # Compare file sizes
-                if ($sourceFile.Length -ne $targetFile.Length) {
-                    $result.Status = "ERROR"
-                    $result.Details = "File size mismatch. Source: $($sourceFile.Length) bytes, Target: $($targetFile.Length) bytes"
-                    $errors++
-                    $results += $result
+                if (-not (Test-Path $targetFolder)) {
+                    $logger.Warning("Target folder not found: $targetFolder")
                     continue
                 }
 
-                # Optionally compare file contents
-                if ($checkContents) {
-                    $sourceHash = Get-FileHash -Path $sourceFile.FullName -Algorithm SHA256
-                    $targetHash = Get-FileHash -Path $targetFile.FullName -Algorithm SHA256
+                # Get all files in source folder
+                $sourceFiles = Get-ChildItem -Path $sourceFolder -File -Recurse
+                $targetFiles = Get-ChildItem -Path $targetFolder -File -Recurse
+
+                # Create a hashtable of target files for quick lookup
+                $targetFileLookup = @{}
+                foreach ($file in $targetFiles) {
+                    $relativePath = $file.FullName.Substring($targetFolder.Length)
+                    $targetFileLookup[$relativePath] = $file
+                }
+
+                # Check each source file
+                foreach ($sourceFile in $sourceFiles) {
+                    $relativePath = $sourceFile.FullName.Substring($sourceFolder.Length)
                     
-                    if ($sourceHash.Hash -ne $targetHash.Hash) {
+                    # Skip if we've already processed this file in a newer release
+                    if ($processedFiles.ContainsKey($relativePath)) {
+                        $logger.Debug("Skipping file $relativePath as it was already found in a newer release")
+                        continue
+                    }
+
+                    $result = [PSCustomObject]@{
+                        File = $relativePath
+                        Release = $release
+                        Status = "OK"
+                        Details = ""
+                    }
+
+                    # Check if file exists in target
+                    if (-not $targetFileLookup.ContainsKey($relativePath)) {
                         $result.Status = "ERROR"
-                        $result.Details = "File content mismatch"
+                        $result.Details = "File not found in target"
                         $errors++
                         $results += $result
                         continue
                     }
-                }
 
-                $results += $result
-            }
+                    $targetFile = $targetFileLookup[$relativePath]
 
-            # Check for extra files in target that shouldn't be there
-            foreach ($targetFile in $targetFiles) {
-                $relativePath = $targetFile.FullName.Substring($targetFolder.Length)
-                $sourcePath = Join-Path $sourceFolder $relativePath
-                
-                if (-not (Test-Path $sourcePath)) {
-                    $result = [PSCustomObject]@{
-                        File = $relativePath
-                        Release = $release
-                        Status = "WARNING"
-                        Details = "Extra file found in target that doesn't exist in source"
+                    # Compare file sizes
+                    if ($sourceFile.Length -ne $targetFile.Length) {
+                        $result.Status = "ERROR"
+                        $result.Details = "File size mismatch. Source: $($sourceFile.Length) bytes, Target: $($targetFile.Length) bytes"
+                        $errors++
+                        $results += $result
+                        continue
                     }
+
+                    # Optionally compare file contents
+                    if ($checkContents) {
+                        $sourceHash = Get-FileHash -Path $sourceFile.FullName -Algorithm SHA256
+                        $targetHash = Get-FileHash -Path $targetFile.FullName -Algorithm SHA256
+                        
+                        if ($sourceHash.Hash -ne $targetHash.Hash) {
+                            $result.Status = "ERROR"
+                            $result.Details = "File content mismatch"
+                            $errors++
+                            $results += $result
+                            continue
+                        }
+                    }
+
                     $results += $result
+                    $processedFiles[$relativePath] = $true
+                }
+            }
+        }
+
+        # Check for extra files in target that shouldn't be there
+        foreach ($mapping in $config.folderMappings) {
+            $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
+            if (Test-Path $targetFolder) {
+                $targetFiles = Get-ChildItem -Path $targetFolder -File -Recurse
+                foreach ($targetFile in $targetFiles) {
+                    $relativePath = $targetFile.FullName.Substring($targetFolder.Length)
+                    if (-not $processedFiles.ContainsKey($relativePath)) {
+                        $result = [PSCustomObject]@{
+                            File = $relativePath
+                            Release = "Unknown"
+                            Status = "WARNING"
+                            Details = "Extra file found in target that doesn't exist in any source release"
+                        }
+                        $results += $result
+                    }
                 }
             }
         }
@@ -430,4 +484,4 @@ function Test-ReleaseCopyIntegrity {
 }
 
 # Example usage
-# Test-ReleaseCopyIntegrity -TargetClient "Drax" -Release "9.2.0" -CheckContents $true
+Test-ReleaseCopyIntegrity -TargetClient "Drax" -Releases "9.2.0,9.2.4.0,9.2.4.5" -CheckContents $true
