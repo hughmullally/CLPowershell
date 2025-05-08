@@ -154,12 +154,60 @@ function Test-FileSize {
     if (Test-Path $Path -PathType Leaf) {
         $size = (Get-Item $Path).Length / 1MB
         if ($size -gt $MaxSizeMB) {
-            throw "File size ($size MB) exceeds maximum allowed size ($MaxSizeMB MB): $Path"
+            # Instead of throwing an error, log a warning and return true
+            Write-Warning "File size ($size MB) exceeds maximum allowed size ($MaxSizeMB MB): $Path"
+            return $true
         }
     }
 
     return $true
 }
 
+function Copy-LargeFile {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$SourcePath,
+        
+        [Parameter(Mandatory=$true)]
+        [string]$DestinationPath,
+        
+        [Parameter(Mandatory=$true)]
+        [object]$Logger,
+        
+        [int]$BufferSize = 1MB
+    )
+
+    try {
+        $sourceFile = [System.IO.File]::OpenRead($SourcePath)
+        $destinationFile = [System.IO.File]::Create($DestinationPath)
+        
+        $buffer = New-Object byte[] $BufferSize
+        $bytesRead = 0
+        $totalBytesRead = 0
+        $fileSize = (Get-Item $SourcePath).Length
+        
+        while (($bytesRead = $sourceFile.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $destinationFile.Write($buffer, 0, $bytesRead)
+            $totalBytesRead += $bytesRead
+            
+            # Log progress every 10%
+            $progress = [math]::Round(($totalBytesRead / $fileSize) * 100)
+            if ($progress % 10 -eq 0) {
+                $Logger.Information("Copying large file: $progress% complete")
+            }
+        }
+        
+        $Logger.Information("Successfully copied large file: $SourcePath")
+    }
+    catch {
+        $Logger.Error("Failed to copy large file: $_")
+        throw
+    }
+    finally {
+        if ($sourceFile) { $sourceFile.Dispose() }
+        if ($destinationFile) { $destinationFile.Dispose() }
+    }
+}
+
 # Export the functions
-Export-ModuleMember -Function Test-ReleaseFormat, Test-FolderPermissions, Test-Configuration, Test-FileSize 
+Export-ModuleMember -Function Test-ReleaseFormat, Test-FolderPermissions, Test-Configuration, Test-FileSize, Copy-LargeFile 

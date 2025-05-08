@@ -24,6 +24,7 @@ function Deploy-Release {
         [string] $configPath = ".\config.json"
     )
 
+    
     $logger = $null
     try {
         $config = Get-Configuration -configPath $configPath
@@ -31,15 +32,15 @@ function Deploy-Release {
         $gitRootFolder = $config.defaultPaths.gitRootFolder
 
         # Initialize logger
-        $logLevel = $LogLevel.Information
+        $logLevel = [LogLevel]::Information
         if ($config.logging.logLevel) {
-            $logLevel = $LogLevel.($config.logging.logLevel)
+            $logLevel = [LogLevel]::($config.logging.logLevel)
         }
         $logger = New-Logger -LogPath $config.logging.logPath -LogLevel $logLevel
         $logger.Information("Starting release deployment for client: $targetClient")
 
-        # Reset the file tracker
-        $script:fileReleaseTracker = @{}
+        # Create ReleaseService instance
+        $releaseService = [ReleaseService]::new($rootFolder, $logger)
 
         # Validate all releases before processing
         $releases = $release.Split(',')
@@ -48,16 +49,19 @@ function Deploy-Release {
         }
 
         foreach ($release in $releases) {
-            # $release = "V" + $release.TrimStart()
+            # Ensure release is prefixed with V
+            if (-not $release.StartsWith('V')) {
+                $release = "V" + $release.Trim()
+            }
             $logger.Information("Processing Release: $release")
             
-            $releaseRootFolder = GetReleaseRootFolder -rootFolder $rootFolder -release $release -logger $logger
-            if (-not (Test-Path $releaseRootFolder)) {
-                $logger.Warning("Release root folder not found: $releaseRootFolder")
+            $releaseObj = $releaseService.GetRelease($release)
+            if (-not (Test-Path $releaseObj.RootFolder)) {
+                $logger.Warning("Release root folder not found: $($releaseObj.RootFolder)")
                 continue
             }
             
-            processRelease -releaseRootFolder $releaseRootFolder -release $release -client $targetClient -gitRootFolder $gitRootFolder -folderMappings $config.folderMappings -logger $logger
+            $releaseService.ProcessRelease($releaseObj.RootFolder, $release, $targetClient, $gitRootFolder, $config.folderMappings)
         }
 
         # Generate CSV report
@@ -79,4 +83,5 @@ function Deploy-Release {
     }
 } 
 
- Deploy-Release -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
+ # Deploy-Release -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
+ 

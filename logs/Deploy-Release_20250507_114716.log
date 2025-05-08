@@ -1,0 +1,4 @@
+[2025-05-07 11:47:17] [INFO] Starting release deployment for client: Drax
+[2025-05-07 11:47:26] [INFO] Processing Release: V9.2.0
+[2025-05-07 11:47:47] [ERROR] An error occurred: The term 'processRelease' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.

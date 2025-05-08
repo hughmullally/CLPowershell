@@ -1,3 +1,5 @@
+#Requires -Version 5.1
+
 class FileMapping {
     [string]$SourceFolder
     [string]$TargetFolder

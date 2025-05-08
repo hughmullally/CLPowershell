@@ -1,24 +1,26 @@
-function processRelease {
+function Process-Release {
     param (
         [string] $releaseRootFolder,
         [string] $release,
         [string] $client,
         [string] $gitRootFolder,
-        [hashtable] $folderMappings,
+        [array] $folderMappings,
         [object] $logger
     )
 
     $logger.Information("Processing release folder: $releaseRootFolder")
 
     # Process each folder mapping
-    foreach ($mapping in $folderMappings.GetEnumerator()) {
-        $sourceFolder = Join-Path $releaseRootFolder $mapping.Key
+    foreach ($mapping in $folderMappings) {
+        #$sourceFolder = Join-Path $releaseRootFolder $mapping.sourceFolder
+        $sourceFolder = Get-ReleaseFolder -releaseRootFolder $releaseRootFolder -release $release -logger $logger  
         if (-not (Test-Path $sourceFolder)) {
+            
             $logger.Warning("Source folder not found: $sourceFolder")
             continue
         }
 
-        $targetFolder = Join-Path $gitRootFolder "$client\release\$($mapping.Value)"
+        $targetFolder = Join-Path $gitRootFolder "$client\release\$($mapping.targetFolder)"
         if (-not (Test-Path $targetFolder)) {
             New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
             $logger.Information("Created target folder: $targetFolder")

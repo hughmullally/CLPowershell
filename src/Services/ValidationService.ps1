@@ -1,3 +1,6 @@
+#Requires -Version 5.1
+
+# Import the module
 class ValidationService {
     [object]$Logger
     [bool]$CheckContents
@@ -7,7 +10,7 @@ class ValidationService {
         $this.CheckContents = $checkContents
     }
 
-    [ValidationResult] ValidateFile([string]$sourceFile, [string]$targetFile, [string]$release) {
+    [ValidationResult] ValidateFile([string]$sourceFile, [string]$targetFile, [Release]$release) {
         $result = [ValidationResult]::new($sourceFile, $release)
 
         if (-not (Test-Path $targetFile)) {
@@ -36,7 +39,7 @@ class ValidationService {
         return $result
     }
 
-    [ValidationResult[]] ValidateFolder([FileMapping]$mapping, [string]$sourceBase, [string]$targetBase, [string]$release) {
+    [ValidationResult[]] ValidateFolder([FileMapping]$mapping, [string]$sourceBase, [string]$targetBase, [Release]$release) {
         $results = @()
         $sourceFolder = $mapping.GetSourcePath($sourceBase)
         $targetFolder = $mapping.GetTargetPath($targetBase)
@@ -81,7 +84,7 @@ class ValidationService {
             $sourcePath = Join-Path $sourceFolder $relativePath
             
             if (-not (Test-Path $sourcePath)) {
-                $result = [ValidationResult]::new($relativePath, "Unknown")
+                $result = [ValidationResult]::new($relativePath, [Release]::new("Unknown"))
                 $result.SetWarning("Extra file found in target that doesn't exist in source")
                 $results += $result
             }

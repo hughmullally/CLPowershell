@@ -1,0 +1,4 @@
+[2025-05-07 11:58:02] [INFO] Starting release deployment for client: Drax
+[2025-05-07 11:58:11] [INFO] Processing Release: V9.2.0
+[2025-05-07 11:58:16] [INFO] Processing release folder: C:\Releases\V9.2
+[2025-05-07 11:58:43] [ERROR] An error occurred: Unable to find type [Release].

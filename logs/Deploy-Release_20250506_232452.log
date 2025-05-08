@@ -1,0 +1,6 @@
+[2025-05-06 23:24:52] [INFO] Starting release deployment for client: Drax
+[2025-05-06 23:24:52] [INFO] Processing Release: V9.2.0
+[2025-05-06 23:25:06] [INFO] Processing release folder: C:\Releases\V9.2
+[2025-05-06 23:25:09] [WARN] Source folder not found: C:\Releases\V9.2\Core Components\Database Scripts\1. Upgrade Release Script Files
+[2025-05-06 23:25:18] [WARN] Source folder not found: C:\Releases\V9.2\Core Components\Loaders
+[2025-05-06 23:25:23] [WARN] Source folder not found: C:\Releases\V9.2\Core Components\RiskCubed Portal\RiskCubed

@@ -7,12 +7,15 @@
     Description = 'A PowerShell module for managing and validating release deployments to client folders'
     PowerShellVersion = '5.1'
     RootModule = 'ReleaseDeploymentManager.psm1'
+    ScriptsToProcess = @()
+    TypesToProcess = @()
+    FormatsToProcess = @()
     FunctionsToExport = @(
         'Deploy-Release',
         'Confirm-ReleaseDeployment'
     )
     CmdletsToExport = @()
-    VariablesToExport = '*'
+    VariablesToExport = @('LogLevel')
     AliasesToExport = @()
     PrivateData = @{
         PSData = @{

@@ -1,3 +1,5 @@
+#Requires -Version 5.1
+
 class ValidationResult {
     [string]$File
     [string]$Release

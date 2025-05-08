@@ -1,3 +1,5 @@
+#Requires -Version 5.1
+
 class Release {
     [string]$Version
     [string]$RootFolder

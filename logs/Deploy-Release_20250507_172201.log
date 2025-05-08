@@ -1,0 +1,6 @@
+[2025-05-07 17:22:01] [INFO] Starting release deployment for client: Drax
+[2025-05-07 17:22:01] [INFO] Processing Release: V9.2.0
+[2025-05-07 17:22:01] [WARN] Release root folder not found: C:\Releases\VV9.2
+[2025-05-07 17:22:01] [INFO] Processing Release: V 9.2.4.0
+[2025-05-07 17:22:01] [WARN] Release root folder not found: C:\Releases\VV 9.2
+[2025-05-07 17:22:02] [ERROR] An error occurred: You cannot call a method on a null-valued expression.

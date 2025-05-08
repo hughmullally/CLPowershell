@@ -1,0 +1,4 @@
+[2025-05-06 23:08:44] [INFO] Starting release deployment for client: Drax
+[2025-05-06 23:09:15] [INFO] Processing Release: 9.2.0
+[2025-05-06 23:09:19] [ERROR] An error occurred: The term 'Get-ReleaseRootFolder' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.

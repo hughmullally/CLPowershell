@@ -37,152 +37,36 @@ function Confirm-ReleaseDeployment {
         $gitRootFolder = $config.defaultPaths.gitRootFolder
 
         # Initialize logger
-        $logLevel = $LogLevel.Information
+        $logLevel = [LogLevel]::Information
         if ($config.logging.logLevel) {
-            $logLevel = $LogLevel.($config.logging.logLevel)
+            $logLevel = [LogLevel]::($config.logging.logLevel)
         }
         $logger = New-Logger -LogPath $config.logging.logPath -LogLevel $logLevel
         $logger.Information("Starting deployment confirmation for client: $targetClient, releases: $releases")
 
-        # Get target root folder
-        $targetRootFolder = get-target-root-folder -gitRootFolder $gitRootFolder -client $targetClient -logger $logger
+        # Create ReleaseService instance
+        $releaseService = [ReleaseService]::new($rootFolder, $logger)
 
-        $results = @()
-        $errors = 0
-        $processedFiles = @{}  # Track which files we've already checked
+        # Get validation results
+        $results = $releaseService.ConfirmReleaseDeployment($targetClient, $releases, $gitRootFolder, $config, $checkContents)
 
-        # Process releases in version order (newest first)
-        $releaseList = $releases.Split(',') | ForEach-Object { $_.Trim() }
-        $sortedReleases = Sort-ReleaseVersions -Releases $releaseList
-        $logger.Information("Processing releases in order: $($sortedReleases -join ', ')")
-
-        foreach ($release in $sortedReleases) {
-            $logger.Information("Processing release: $release")
-            
-            # Get source folders
-            $releaseRootFolder = GetReleaseRootFolder -rootFolder $rootFolder -release $release -logger $logger
-            $releaseFolder = GetReleaseFolder -releaseRootFolder $releaseRootFolder -release $release -logger $logger
-
-            if (-not $releaseFolder) {
-                $logger.Warning("Source release folder not found for release: $release")
-                continue
+        # Output results
+        $results | ForEach-Object {
+            $status = switch ($_.Status) {
+                "Success" { "OK" }
+                "Error" { "ERROR" }
+                "Warning" { "WARNING" }
+                default { $_.Status }
             }
-
-            # Process each folder mapping
-            foreach ($mapping in $config.folderMappings) {
-                $sourceFolder = Join-Path $releaseFolder.FullName $mapping.sourceFolder
-                $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
-
-                if (-not (Test-Path $sourceFolder)) {
-                    $logger.Warning("Source folder not found: $sourceFolder")
-                    continue
-                }
-
-                if (-not (Test-Path $targetFolder)) {
-                    $logger.Warning("Target folder not found: $targetFolder")
-                    continue
-                }
-
-                # Get all files in source folder
-                $sourceFiles = Get-ChildItem -Path $sourceFolder -File -Recurse
-                $targetFiles = Get-ChildItem -Path $targetFolder -File -Recurse
-
-                # Create a hashtable of target files for quick lookup
-                $targetFileLookup = @{}
-                foreach ($file in $targetFiles) {
-                    $relativePath = $file.FullName.Substring($targetFolder.Length)
-                    $targetFileLookup[$relativePath] = $file
-                }
-
-                # Check each source file
-                foreach ($sourceFile in $sourceFiles) {
-                    $relativePath = $sourceFile.FullName.Substring($sourceFolder.Length)
-                    
-                    # Skip if we've already processed this file in a newer release
-                    if ($processedFiles.ContainsKey($relativePath)) {
-                        $logger.Debug("Skipping file $relativePath as it was already found in a newer release")
-                        continue
-                    }
-
-                    $result = [PSCustomObject]@{
-                        File = $relativePath
-                        Release = $release
-                        Status = "OK"
-                        Details = ""
-                    }
-
-                    # Check if file exists in target
-                    if (-not $targetFileLookup.ContainsKey($relativePath)) {
-                        $result.Status = "ERROR"
-                        $result.Details = "File not found in target"
-                        $errors++
-                        $results += $result
-                        continue
-                    }
-
-                    $targetFile = $targetFileLookup[$relativePath]
-
-                    # Compare file sizes
-                    if ($sourceFile.Length -ne $targetFile.Length) {
-                        $result.Status = "ERROR"
-                        $result.Details = "File size mismatch. Source: $($sourceFile.Length) bytes, Target: $($targetFile.Length) bytes"
-                        $errors++
-                        $results += $result
-                        continue
-                    }
-
-                    # Optionally compare file contents
-                    if ($checkContents) {
-                        $sourceHash = Get-FileHash -Path $sourceFile.FullName -Algorithm SHA256
-                        $targetHash = Get-FileHash -Path $targetFile.FullName -Algorithm SHA256
-                        
-                        if ($sourceHash.Hash -ne $targetHash.Hash) {
-                            $result.Status = "ERROR"
-                            $result.Details = "File content mismatch"
-                            $errors++
-                            $results += $result
-                            continue
-                        }
-                    }
-
-                    $results += $result
-                    $processedFiles[$relativePath] = $true
-                }
-            }
+            Write-Host "$($_.File) - $status - $($_.Details)"
         }
 
-        # Check for extra files in target that shouldn't be there
-        foreach ($mapping in $config.folderMappings) {
-            $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
-            if (Test-Path $targetFolder) {
-                $targetFiles = Get-ChildItem -Path $targetFolder -File -Recurse
-                foreach ($targetFile in $targetFiles) {
-                    $relativePath = $targetFile.FullName.Substring($targetFolder.Length)
-                    if (-not $processedFiles.ContainsKey($relativePath)) {
-                        $result = [PSCustomObject]@{
-                            File = $relativePath
-                            Release = "Unknown"
-                            Status = "WARNING"
-                            Details = "Extra file found in target that doesn't exist in any source release"
-                        }
-                        $results += $result
-                    }
-                }
-            }
-        }
-
-        # Generate report
-        $reportPath = Join-Path $gitRootFolder "$targetClient\release\deployment_confirmation_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
-        $results | Export-Csv -Path $reportPath -NoTypeInformation
-
-        $logger.Information("Deployment confirmation completed. Found $errors errors.")
-        $logger.Information("Report generated at: $reportPath")
-
+        $logger.Information("Completed deployment confirmation for client: $targetClient")
         return $results
     }
     catch {
         if ($logger) {
-            $logger.Error("An error occurred during deployment confirmation: $_")
+            $logger.Error("An error occurred: $_")
         } else {
             Write-Error "An error occurred before logger initialization: $_"
         }
