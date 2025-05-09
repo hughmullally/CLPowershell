@@ -1,0 +1,21 @@
+# Ignore everything
+/*
+!*/
+
+# But not these files...
+!*.ps1
+!*.psm1
+!*.psd1
+!*.json
+!*.md
+!*.txt
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore test results
+TestResults/
+
+# Keep config.json
+!config.json 
