@@ -46,7 +46,7 @@
         "gitRootFolder": "c:\\Git"
     },
     "logging": {
-        "logPath": "c:\\logs",
+        "logPath": "C:\\git\\ClientReleases\\Drax\\Release\\Deploy-Release.log",
         "logLevel": "Information"
     }
 } 

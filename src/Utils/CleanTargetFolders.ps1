@@ -1,4 +1,4 @@
-$Client = "Drax"
+y$Client = "Drax"
 $rootFolder = "C:\git\ClientReleases\$Client\Release"
 
 
@@ -10,12 +10,14 @@ if ($confirmation -ne 'y') {
 
 Write-Host "Cleaning target folder: $rootFolder"
 Get-ChildItem -Path $rootFolder -Recurse -File | ForEach-Object {
-    Write-Host "Deleting file: $($_.FullName)"
-    try {
-        Remove-Item $_.FullName -Force
-    }
-    catch {
-        Write-Warning "Failed to delete file: $($_.FullName). Error: $_"
+    if ($_.DirectoryName -notlike $rootFolder) {       
+        try {
+            Write-Host "Deleting file: $($_.FullName)"
+            Remove-Item $_.FullName -Force
+        }
+        catch {
+            Write-Warning "Failed to delete file: $($_.FullName). Error: $_"
+        }
     }
 }
 Write-Host "Finished cleaning target folder"

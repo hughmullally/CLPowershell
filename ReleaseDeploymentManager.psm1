@@ -72,7 +72,7 @@ class ValidationResult {
     }
 }
 
-# Get the module's root directory
+# Import the module
 $moduleRoot = Join-Path $PSScriptRoot "src" 
 
 # Import all private functions
@@ -115,18 +115,19 @@ foreach ($function in $publicFunctions) {
     }
 }
 
-# Import ReleaseService class
-$publicServices = @(
+# Import services in correct order
+$services = @(
+    'FileTrackingService',
     'ReleaseService',
     'ValidationService'
 )
 
-foreach ($service in $publicServices) {
+foreach ($service in $services) {
     $servicePath = Join-Path $moduleRoot "Services\$service.ps1"
     if (Test-Path $servicePath) {
         . $servicePath
     }
-else {
+    else {
         Write-Warning "Service class file not found: $servicePath"
     }
 }

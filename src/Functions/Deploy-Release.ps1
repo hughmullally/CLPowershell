@@ -64,12 +64,6 @@ function Deploy-Release {
             $releaseService.ProcessRelease($releaseObj.RootFolder, $release, $targetClient, $gitRootFolder, $config.folderMappings)
         }
 
-        # Generate CSV report
-        $csvPath = Join-Path $gitRootFolder "$targetClient\release\file_releases.csv"
-        $fileReleaseTracker.GetEnumerator() | 
-            Select-Object @{Name='File'; Expression={$_.Key}}, @{Name='Release'; Expression={$_.Value}} |
-            Export-Csv -Path $csvPath -NoTypeInformation
-        
         $logger.Information("Generated deployment report at: $csvPath")
         $logger.Information("Completed release deployment for client: $targetClient")
     }

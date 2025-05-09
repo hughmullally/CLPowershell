@@ -3,10 +3,12 @@
 class ReleaseService {
     [string]$RootFolder
     [object]$Logger
+    [FileTrackingService]$FileTracker
 
     ReleaseService([string]$rootFolder, [object]$logger) {
         $this.RootFolder = $rootFolder
         $this.Logger = $logger
+        $this.FileTracker = [FileTrackingService]::new($logger)
     }
 
     [Release] GetRelease([string]$version) {
@@ -69,12 +71,9 @@ class ReleaseService {
                 return
             }
 
-<#
-            if($cleanFolder) {
-                $this.Logger.Information("Cleaning target folder: $targetRootFolder")
-                # Get-ChildItem -Path $targetRootFolder -Recurse -File | Remove-Item -Force
-            }
-#>
+            # Load existing file releases
+            $csvPath = Join-Path $targetRootFolder "file_releases.csv"
+            $this.FileTracker.LoadExistingFileReleases($csvPath)
 
             foreach ($mapping in $folderMappings) {
                 $releaseFolderString = $releaseFolder.ReleaseFolder
@@ -95,9 +94,13 @@ class ReleaseService {
                 Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
                     $targetFile = Join-Path $targetFolder $_.Name
                     Copy-Item -Path $_.FullName -Destination $targetFile -Force
+                    $this.FileTracker.TrackFile($_.Name, $release)
                     $this.Logger.Information("Copied file: $($_.Name) to $targetFile")
                 }
             }
+
+            # Save updated file releases
+            $this.FileTracker.SaveFileReleases($csvPath)
         }
         catch {
             $this.Logger.Error("Error in ProcessRelease: $_")
