@@ -95,7 +95,7 @@ class ReleaseService {
                     $targetFile = Join-Path $targetFolder $_.Name
                     Copy-Item -Path $_.FullName -Destination $targetFile -Force
                     $this.FileTracker.TrackFile($_.Name, $release)
-                    $this.Logger.Information("Copied file: $($_.Name) to $targetFile")
+                    $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
                 }
             }
 

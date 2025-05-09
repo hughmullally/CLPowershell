@@ -36,7 +36,8 @@ function Deploy-Release {
         if ($config.logging.logLevel) {
             $logLevel = [LogLevel]::($config.logging.logLevel)
         }
-        $logger = New-Logger -LogPath $config.logging.logPath -LogLevel $logLevel
+        $logPath = $config.logging.logPath 
+        $logger = New-Logger -LogPath $logPath -LogLevel $logLevel
         $logger.Information("Starting release deployment for client: $targetClient")
 
         # Create ReleaseService instance
@@ -63,7 +64,7 @@ function Deploy-Release {
             
             $releaseService.ProcessRelease($releaseObj.RootFolder, $release, $targetClient, $gitRootFolder, $config.folderMappings)
         }
-
+        rename-tracking-file -logPath $logPath
         $logger.Information("Generated deployment report at: $csvPath")
         $logger.Information("Completed release deployment for client: $targetClient")
     }
@@ -77,5 +78,21 @@ function Deploy-Release {
     }
 } 
 
+function rename-tracking-file {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string] $logPath
+    )
+    $logFolder = Split-Path $logPath -Parent
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    $existingTrackingFile = Join-Path $logFolder "file_releases.csv"
+    $newTrackingFile = Join-Path $logFolder "file_releases_${timestamp}.csv"
+
+    if (Test-Path $existingTrackingFile) {
+        Rename-Item -Path $existingTrackingFile -NewName $newTrackingFile -Force
+        $logger.Information("Renamed tracking file to: $newTrackingFile") 
+    }
+
+}
  # Deploy-Release -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
  

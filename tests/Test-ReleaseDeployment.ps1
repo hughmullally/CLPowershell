@@ -17,7 +17,8 @@ foreach ($function in $requiredFunctions) {
 # Test Case 2: Multiple releases
 Write-Host "`nTest Case 2: Multiple releases" -ForegroundColor Cyan
 try {
-    Deploy-Release -TargetClient "Drax" -Release "9.2.0, 9.2.4.0"
+    Deploy-Release -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
+    Confirm-ReleaseDeployment -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
     Write-Host "Test Case 2 passed" -ForegroundColor Green
 }
 catch {
