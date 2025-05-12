@@ -26,7 +26,8 @@ class FileTrackingService {
 
     [void] SaveFileReleases() {
         $this.Logger.Information("Saving file releases to: $this.CsvPath")
-        $this.FileReleaseTracker.GetEnumerator() | 
+        $sortedTracker = $this.FileReleaseTracker.GetEnumerator() | Sort-Object Key
+        $sortedTracker |
             Select-Object @{Name='File'; Expression={$_.Key}}, @{Name='Release'; Expression={$_.Value}} |
             Export-Csv -Path $this.csvPath -NoTypeInformation
     }
