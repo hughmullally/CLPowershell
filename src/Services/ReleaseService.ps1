@@ -72,7 +72,7 @@ class ReleaseService {
             }
 
             # Load existing file releases
-            $csvPath = Join-Path $targetRootFolder "file_releases.csv"
+            $csvPath = Join-Path $targetRootFolder "ProcessReleaseAudit.csv"
             $this.FileTracker.LoadExistingFileReleases($csvPath)
 
             foreach ($mapping in $folderMappings) {
@@ -115,6 +115,10 @@ class ReleaseService {
             $errors = 0
             $processedFiles = @{}
 
+            # Load existing file releases
+            $csvPath = Join-Path $targetRootFolder "ConfirmReleaseAudit.csv"
+            $this.FileTracker.LoadExistingFileReleases($csvPath)
+
             # Process releases in version order (newest first)
             $releaseList = $releases.Split(',') | ForEach-Object { $_.Trim() }
             $sortedReleases = [Release]::SortByVersion([Release]::FromStringArray($releaseList))
@@ -124,7 +128,7 @@ class ReleaseService {
                 if (-not $release.Version.StartsWith('V')) {
                     $release.Version = "V" + $release.Version.Trim()
                 }
-    
+
                 $this.Logger.Information("Processing release: $release")
                 
                 $releaseObj = $this.GetRelease($release.Version)
@@ -184,12 +188,19 @@ class ReleaseService {
                             }
                         }
 
-                        $results += $result
+                        # Track the file with its release version
+                        $this.FileTracker.TrackFile($sourceFile.Name, $release.Version)
                         $this.Logger.Information("Release $($release.Version) - $sourceFile.Name matches")
+                        
+                        $results += $result
                         $processedFiles[$relativePath] = $true
                     }
                 }
             }
+
+            # Save the updated file releases to CSV
+            $this.FileTracker.SaveFileReleases($csvPath)
+            $this.Logger.Information("Generated file release report at: $csvPath")
 
             return $results
         }

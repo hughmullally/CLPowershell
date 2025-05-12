@@ -41,5 +41,5 @@ function Test-Confirmation {
 
 # Cleanup
 
-# Test-Deployment
-Test-Confirmation
+Test-Deployment
+#Test-Confirmation
