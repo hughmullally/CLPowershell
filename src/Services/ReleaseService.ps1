@@ -3,12 +3,10 @@
 class ReleaseService {
     [string]$RootFolder
     [object]$Logger
-    [FileTrackingService]$FileTracker
 
     ReleaseService([string]$rootFolder, [object]$logger) {
         $this.RootFolder = $rootFolder
         $this.Logger = $logger
-        $this.FileTracker = [FileTrackingService]::new($logger)
     }
 
     [Release] GetRelease([string]$version) {
@@ -54,7 +52,14 @@ class ReleaseService {
         }
     }
 
-    [void] ProcessRelease([string]$releaseRootFolder, [string]$release, [string]$client, [string]$gitRootFolder, [array]$folderMappings) {
+    [void] ProcessRelease(
+        [string]$releaseRootFolder,
+        [string]$release,
+        [string]$client,
+        [string]$gitRootFolder,
+        [array]$folderMappings,
+        [FileTrackingService]$fileTracker
+    ) {
         try {
             $this.Logger.Information("Processing release folder: $releaseRootFolder")
             $releaseObj = $this.GetRelease($release)
@@ -72,8 +77,7 @@ class ReleaseService {
             }
 
             # Load existing file releases
-            $csvPath = Join-Path $targetRootFolder "ProcessReleaseAudit.csv"
-            $this.FileTracker.LoadExistingFileReleases($csvPath)
+            $fileTracker.LoadExistingFileReleases()
 
             foreach ($mapping in $folderMappings) {
                 $releaseFolderString = $releaseFolder.ReleaseFolder
@@ -94,13 +98,13 @@ class ReleaseService {
                 Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
                     $targetFile = Join-Path $targetFolder $_.Name
                     Copy-Item -Path $_.FullName -Destination $targetFile -Force
-                    $this.FileTracker.TrackFile($_.Name, $release)
+                    $fileTracker.TrackFile($_.Name, $release)
                     $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
                 }
             }
 
             # Save updated file releases
-            $this.FileTracker.SaveFileReleases($csvPath)
+            $fileTracker.SaveFileReleases()
         }
         catch {
             $this.Logger.Error("Error in ProcessRelease: $_")
@@ -213,6 +217,8 @@ class ReleaseService {
     [void] ProcessAllReleases([string]$targetClient, [string]$releases, [string]$gitRootFolder, $config) {
         try {
             $this.Logger.Information("Starting release deployment for client: $targetClient")
+            $releaseTracker = [FileTrackingService]::new($this.Logger, $gitRootFolder, $targetClient, "DeployTracker.csv")
+
 
             # Validate all releases before processing
             $releaseList = $releases.Split(',')
@@ -233,14 +239,20 @@ class ReleaseService {
                     continue
                 }
                 
-                $this.ProcessRelease($releaseObj.RootFolder, $release, $targetClient, $gitRootFolder, $config.folderMappings)
+                $this.ProcessRelease($releaseObj.RootFolder, 
+                                        $release, 
+                                        $targetClient, 
+                                        $gitRootFolder, 
+                                        $config.folderMappings, 
+                                        $releaseTracker)
+
             }
 
             # Generate CSV report
-            $csvPath = Join-Path $gitRootFolder "ClientReleases\$targetClient\release\ProcessReleaseAudit.csv"
-            $this.FileTracker.SaveFileReleases($csvPath)
+            #$csvPath = Join-Path $gitRootFolder "ClientReleases\$targetClient\release\ProcessReleaseAudit.csv"
+            #$this.FileTracker.SaveFileReleases($csvPath)
             
-            $this.Logger.Information("Generated deployment report at: $csvPath")
+            #$this.Logger.Information("Generated deployment report at: $csvPath")
             $this.Logger.Information("Completed release deployment for client: $targetClient")
         }
         catch {

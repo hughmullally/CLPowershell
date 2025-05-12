@@ -3,26 +3,32 @@
 class FileTrackingService {
     [object]$Logger
     [hashtable]$FileReleaseTracker
+    [string]$CsvPath
 
-    FileTrackingService([object]$logger) {
+    FileTrackingService([object]$logger, $gitRootFolder, $Client, [string]$csvFileName ) {
         $this.Logger = $logger
         $this.FileReleaseTracker = @{}
+        $clientReleaseFolder = Join-Path $gitRootFolder "ClientReleases"
+        $clientFolder = Join-Path $clientReleaseFolder $client
+        $releaseFolder = Join-Path $clientFolder "Release"
+
+        $this.CsvPath = Join-Path $releaseFolder $csvFileName
     }
 
-    [void] LoadExistingFileReleases([string]$csvPath) {
-        if (Test-Path $csvPath) {
-            $this.Logger.Information("Loading existing file releases from: $csvPath")
-            Import-Csv -Path $csvPath | ForEach-Object {
+    [void] LoadExistingFileReleases() {
+        if (Test-Path $this.csvPath) {
+            $this.Logger.Information("Loading existing file releases from: $this.csvPath")
+            Import-Csv -Path $this.csvPath | ForEach-Object {
                 $this.FileReleaseTracker[$_.File] = $_.Release
             }
         }
     }
 
-    [void] SaveFileReleases([string]$csvPath) {
-        $this.Logger.Information("Saving file releases to: $csvPath")
+    [void] SaveFileReleases() {
+        $this.Logger.Information("Saving file releases to: $this.CsvPath")
         $this.FileReleaseTracker.GetEnumerator() | 
             Select-Object @{Name='File'; Expression={$_.Key}}, @{Name='Release'; Expression={$_.Value}} |
-            Export-Csv -Path $csvPath -NoTypeInformation
+            Export-Csv -Path $this.csvPath -NoTypeInformation
     }
 
     [void] TrackFile([string]$fileName, [string]$release) {
