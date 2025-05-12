@@ -121,8 +121,8 @@ class ReleaseService {
             $processedFiles = @{}
 
             # Load existing file releases
-            $csvPath = Join-Path $targetRootFolder "ConfirmReleaseAudit.csv"
-            $this.FileTracker.LoadExistingFileReleases($csvPath)
+            $fileTracker = [FileTrackingService]::new($this.Logger, $gitRootFolder, $targetClient, "Confirm-Release.csv")
+            $fileTracker.LoadExistingFileReleases()
 
             # Process releases in version order (newest first)
             $releaseList = $releases.Split(',') | ForEach-Object { $_.Trim() }
@@ -194,17 +194,17 @@ class ReleaseService {
                         }
 
                         # Track the file with its release version
-                        $this.FileTracker.TrackFile($sourceFile.Name, $release.Version)
+                        $fileTracker.TrackFile($sourceFile.Name, $release.Version)
                         $this.Logger.Information("Release $($release.Version) - $sourceFile.Name matches")
                         
                         $results += $result
                         $processedFiles[$relativePath] = $true
                     }
                 }
+                # Save the updated file releases to CSV
+                $fileTracker.SaveFileReleases()
             }
-
-            # Save the updated file releases to CSV
-            $this.FileTracker.SaveFileReleases($csvPath)
+            $fileTracker.CompleteFileTracking()
 
             return $results
         }

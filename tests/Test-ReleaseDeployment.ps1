@@ -20,8 +20,8 @@ function Test-Deployment {
     Test-Initialize
     Write-Host "`nTest Multiple releases" -ForegroundColor Cyan
     try {
-        Deploy-Release -TargetClient "Drax" -Release "9.2.0"
-        # Deploy-Release -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
+        # Deploy-Release -TargetClient "Drax" -Release "9.2.0"
+        Deploy-Release -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
         Write-Host "Test Multiple Releases passed" -ForegroundColor Green
     }
     catch {
@@ -43,4 +43,4 @@ function Test-Confirmation {
 # Cleanup
 
 Test-Deployment
-#Test-Confirmation
+Test-Confirmation
