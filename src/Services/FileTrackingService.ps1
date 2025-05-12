@@ -31,6 +31,19 @@ class FileTrackingService {
             Export-Csv -Path $this.csvPath -NoTypeInformation
     }
 
+    [void] CompleteFileTracking() {
+        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+        $csvFolder = Split-Path $this.CsvPath -Parent
+        $csvFileName = [System.IO.Path]::GetFileNameWithoutExtension((Split-Path $this.CsvPath -Leaf))
+        $newCsvFileName = "${csvFileName}_${timestamp}.csv"
+        $newCsvPath = Join-Path $csvFolder $newCsvFileName
+        
+        if (Test-Path $this.CsvPath) {
+            Rename-Item -Path $this.CsvPath -NewName $newCsvPath -Force
+            $this.Logger.Information("Renamed tracking file to: $newCsvPath")
+        }
+    }
+
     [void] TrackFile([string]$fileName, [string]$release) {
         $this.FileReleaseTracker[$fileName] = $release
         $this.Logger.Debug("Tracked file: $fileName from release: $release")

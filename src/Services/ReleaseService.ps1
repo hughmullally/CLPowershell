@@ -105,6 +105,7 @@ class ReleaseService {
 
             # Save updated file releases
             $fileTracker.SaveFileReleases()
+            
         }
         catch {
             $this.Logger.Error("Error in ProcessRelease: $_")
@@ -204,7 +205,6 @@ class ReleaseService {
 
             # Save the updated file releases to CSV
             $this.FileTracker.SaveFileReleases($csvPath)
-            $this.Logger.Information("Generated file release report at: $csvPath")
 
             return $results
         }
@@ -247,7 +247,7 @@ class ReleaseService {
                                         $releaseTracker)
 
             }
-
+            $releaseTracker.CompleteFileTracking()
             # Generate CSV report
             #$csvPath = Join-Path $gitRootFolder "ClientReleases\$targetClient\release\ProcessReleaseAudit.csv"
             #$this.FileTracker.SaveFileReleases($csvPath)
