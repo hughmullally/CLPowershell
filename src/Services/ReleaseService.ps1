@@ -209,4 +209,43 @@ class ReleaseService {
             throw
         }
     }
+
+    [void] ProcessAllReleases([string]$targetClient, [string]$releases, [string]$gitRootFolder, $config) {
+        try {
+            $this.Logger.Information("Starting release deployment for client: $targetClient")
+
+            # Validate all releases before processing
+            $releaseList = $releases.Split(',')
+            foreach ($release in $releaseList) {
+                Test-ReleaseFormat -Release $release
+            }
+
+            foreach ($release in $releaseList) {
+                # Ensure release is prefixed with V
+                if (-not $release.StartsWith('V')) {
+                    $release = "V" + $release.Trim()
+                }
+                $this.Logger.Information("Processing Release: $release")
+                
+                $releaseObj = $this.GetRelease($release)
+                if (-not (Test-Path $releaseObj.RootFolder)) {
+                    $this.Logger.Warning("Release root folder not found: $($releaseObj.RootFolder)")
+                    continue
+                }
+                
+                $this.ProcessRelease($releaseObj.RootFolder, $release, $targetClient, $gitRootFolder, $config.folderMappings)
+            }
+
+            # Generate CSV report
+            $csvPath = Join-Path $gitRootFolder "ClientReleases\$targetClient\release\ProcessReleaseAudit.csv"
+            $this.FileTracker.SaveFileReleases($csvPath)
+            
+            $this.Logger.Information("Generated deployment report at: $csvPath")
+            $this.Logger.Information("Completed release deployment for client: $targetClient")
+        }
+        catch {
+            $this.Logger.Error("Error in ProcessAllReleases: $_")
+            throw
+        }
+    }
 } 

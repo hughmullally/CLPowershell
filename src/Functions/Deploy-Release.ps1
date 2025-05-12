@@ -43,28 +43,11 @@ function Deploy-Release {
         # Create ReleaseService instance
         $releaseService = [ReleaseService]::new($rootFolder, $logger)
 
-        # Validate all releases before processing
-        $releases = $release.Split(',')
-        foreach ($release in $releases) {
-            Test-ReleaseFormat -Release $release
-        }
 
-        foreach ($release in $releases) {
-            # Ensure release is prefixed with V
-            if (-not $release.StartsWith('V')) {
-                $release = "V" + $release.Trim()
-            }
-            $logger.Information("Processing Release: $release")
-            
-            $releaseObj = $releaseService.GetRelease($release)
-            if (-not (Test-Path $releaseObj.RootFolder)) {
-                $logger.Warning("Release root folder not found: $($releaseObj.RootFolder)")
-                continue
-            }
-            
-            $releaseService.ProcessRelease($releaseObj.RootFolder, $release, $targetClient, $gitRootFolder, $config.folderMappings)
-        }
-        rename-tracking-file -logPath $logPath
+        # Process all releases
+        $releaseService.ProcessAllReleases($targetClient, $release, $gitRootFolder, $config)
+        
+        # rename-tracking-file -logPath $logPath
         $logger.Information("Generated deployment report at: $csvPath")
         $logger.Information("Completed release deployment for client: $targetClient")
     }
