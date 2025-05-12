@@ -108,7 +108,7 @@ class ReleaseService {
         }
     }
 
-    [array] ConfirmReleaseDeployment([string]$targetClient, [string]$releases, [string]$gitRootFolder, [hashtable]$config, [bool]$checkContents = $false) {
+    [array] ConfirmReleaseDeployment([string]$targetClient, [string]$releases, [string]$gitRootFolder, $config, [bool]$checkContents = $false) {
         try {
             $targetRootFolder = $this.GetTargetRootFolder($gitRootFolder, $targetClient)
             $results = @()
@@ -121,6 +121,10 @@ class ReleaseService {
             $this.Logger.Information("Processing releases in order: $($sortedReleases -join ', ')")
 
             foreach ($release in $sortedReleases) {
+                if (-not $release.Version.StartsWith('V')) {
+                    $release.Version = "V" + $release.Version.Trim()
+                }
+    
                 $this.Logger.Information("Processing release: $release")
                 
                 $releaseObj = $this.GetRelease($release.Version)
@@ -133,7 +137,7 @@ class ReleaseService {
 
                 # Process each folder mapping
                 foreach ($mapping in $config.folderMappings) {
-                    $sourceFolder = Join-Path $releaseFolder.FullName $mapping.sourceFolder
+                    $sourceFolder = Join-Path $releaseFolder.ReleaseFolder $mapping.sourceFolder
                     $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
 
                     if (-not (Test-Path $sourceFolder)) {
@@ -181,6 +185,7 @@ class ReleaseService {
                         }
 
                         $results += $result
+                        $this.Logger.Information("Release $($release.Version) - $sourceFile.Name matches")
                         $processedFiles[$relativePath] = $true
                     }
                 }
