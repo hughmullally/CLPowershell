@@ -39,6 +39,10 @@
         {
             "sourceFolder": "\\Credit Risk\\Workflow XML",
             "targetFolder": "\\06 Standard Workflows"
+        },
+        {
+            "sourceFolder": "\\Credit Risk\\Workflow XML\\Counterparty Scoring Workflow",
+            "targetFolder": "\\06 Standard Workflows"
         }
     ],
     "defaultPaths": {

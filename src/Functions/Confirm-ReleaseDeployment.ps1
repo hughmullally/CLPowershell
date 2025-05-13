@@ -52,13 +52,14 @@ function Confirm-ReleaseDeployment {
 
         # Output results
         $results | ForEach-Object {
+            $logger.WriteLog( $_.status, "$($_.File) - $status - $($_Details)")
             $status = switch ($_.Status) {
                 "Success" { "OK" }
                 "Error" { "ERROR" }
                 "Warning" { "WARNING" }
                 default { $_.Status }
             }
-            Write-Host "$($_.File) - $status - $($_.Details)"
+#             Write-Host "$($_.File) - $status - $($_.Details)"
         }
 
         $logger.Information("Completed deployment confirmation for client: $targetClient")

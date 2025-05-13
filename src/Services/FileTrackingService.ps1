@@ -19,7 +19,11 @@ class FileTrackingService {
         if (Test-Path $this.csvPath) {
             $this.Logger.Information("Loading existing file releases from: $this.csvPath")
             Import-Csv -Path $this.csvPath | ForEach-Object {
-                $this.FileReleaseTracker[$_.File] = $_.Release
+                $this.FileReleaseTracker[$_.File] = @{
+                    Release = $_.Release
+                    SourceFolder = $_.SourceFolder
+                    TargetFolder = $_.TargetFolder
+                }
             }
         }
     }
@@ -27,9 +31,19 @@ class FileTrackingService {
     [void] SaveFileReleases() {
         $this.Logger.Information("Saving file releases to: $this.CsvPath")
         $sortedTracker = $this.FileReleaseTracker.GetEnumerator() | Sort-Object Key
-        $sortedTracker |
-            Select-Object @{Name='File'; Expression={$_.Key}}, @{Name='Release'; Expression={$_.Value}} |
-            Export-Csv -Path $this.csvPath -NoTypeInformation
+        $csvData = foreach ($entry in $sortedTracker) {
+            $file = $entry.Key
+            $release = $entry.Value.Release
+            $sourceFolder = $entry.Value.SourceFolder
+            $targetFolder = $entry.Value.TargetFolder
+            [PSCustomObject]@{
+                File = $file
+                Release = $release
+                SourceFolder = $sourceFolder
+                TargetFolder = $targetFolder
+            }
+        }
+        $csvData | Export-Csv -Path $this.csvPath -NoTypeInformation
     }
 
     [void] CompleteFileTracking() {
@@ -45,9 +59,13 @@ class FileTrackingService {
         }
     }
 
-    [void] TrackFile([string]$fileName, [string]$release) {
-        $this.FileReleaseTracker[$fileName] = $release
-        $this.Logger.Debug("Tracked file: $fileName from release: $release")
+    [void] TrackFile([string]$fileName, [string]$release, [string]$sourceFolder, [string]$targetFolder) {
+        $this.FileReleaseTracker[$fileName] = @{
+            Release = $release
+            SourceFolder = $sourceFolder
+            TargetFolder = $targetFolder
+        }
+        $this.Logger.Debug("Tracked file: $fileName from release: $release (source: $sourceFolder, target: $targetFolder)")
     }
 
     [string] GetFileRelease([string]$fileName) {

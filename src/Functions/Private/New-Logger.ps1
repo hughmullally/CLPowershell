@@ -58,12 +58,14 @@ class Logger {
         $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         $logMessage = "[$timestamp] [$level] $message"
         # Add color coding based on log level
-        switch ($level) {
+        switch ( $level) {
             "ERROR" { Write-Host $logMessage -ForegroundColor Red }
             "WARN"  { Write-Host $logMessage -ForegroundColor Yellow }
-            "INFO"  { Write-Host $logMessage -ForegroundColor White }
-            "DEBUG" { Write-Host $logMessage -ForegroundColor Gray }
-            default { Write-Host $logMessage }
+#            "INFO"  { Write-Host $logMessage -ForegroundColor White }
+#            "DEBUG" { Write-Host $logMessage -ForegroundColor Gray }
+            "INFO"  { }
+            "DEBUG" { }
+        default { Write-Host $logMessage }
         }
         Add-Content -Path $this.LogPath -Value $logMessage
     }

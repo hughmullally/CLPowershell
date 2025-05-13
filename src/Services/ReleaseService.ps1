@@ -98,7 +98,7 @@ class ReleaseService {
                 Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
                     $targetFile = Join-Path $targetFolder $_.Name
                     Copy-Item -Path $_.FullName -Destination $targetFile -Force
-                    $fileTracker.TrackFile($_.Name, $release)
+                    $fileTracker.TrackFile($_.Name, $release, $mapping.sourceFolder, $mapping.targetFolder)
                     $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
                 }
             }
@@ -160,8 +160,10 @@ class ReleaseService {
                     }
 
                     # Get all files in source folder
-                    $sourceFiles = Get-ChildItem -Path $sourceFolder -File -Recurse
-                    $targetFiles = Get-ChildItem -Path $targetFolder -File -Recurse
+                    # $sourceFiles = Get-ChildItem -Path $sourceFolder -File -Recurse
+                    # $targetFiles = Get-ChildItem -Path $targetFolder -File -Recurse
+                    $sourceFiles = Get-ChildItem -Path $sourceFolder -File
+                    $targetFiles = Get-ChildItem -Path $targetFolder -File
 
                     foreach ($sourceFile in $sourceFiles) {
                         $relativePath = $sourceFile.FullName.Substring($sourceFolder.Length)
@@ -194,7 +196,7 @@ class ReleaseService {
                         }
 
                         # Track the file with its release version
-                        $fileTracker.TrackFile($sourceFile.Name, $release.Version)
+                        $fileTracker.TrackFile($sourceFile.Name, $release.Version, $mapping.sourceFolder, $mapping.targetFolder)
                         $this.Logger.Information("Release $($release.Version) - $sourceFile.Name matches")
                         
                         $results += $result
@@ -248,11 +250,6 @@ class ReleaseService {
 
             }
             $releaseTracker.CompleteFileTracking()
-            # Generate CSV report
-            #$csvPath = Join-Path $gitRootFolder "ClientReleases\$targetClient\release\ProcessReleaseAudit.csv"
-            #$this.FileTracker.SaveFileReleases($csvPath)
-            
-            #$this.Logger.Information("Generated deployment report at: $csvPath")
             $this.Logger.Information("Completed release deployment for client: $targetClient")
         }
         catch {
