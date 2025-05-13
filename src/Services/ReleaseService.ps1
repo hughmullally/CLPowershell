@@ -111,7 +111,7 @@ class ReleaseService {
 
             # Save updated file releases
             $fileTracker.SaveFileReleases()
-            $this.DuplicateTracker.LogDuplicates()
+            $this.DuplicateTracker.LogDuplicates($release)
             
         }
         catch {

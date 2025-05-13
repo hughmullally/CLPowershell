@@ -32,10 +32,10 @@ class DuplicateFileTracker {
         }
      }
 
-    [void] LogDuplicates() {
+    [void] LogDuplicates([string]$release) {
         $duplicates = $this.DuplicateFiles.GetEnumerator() | Where-Object { $_.Value.Count -gt 1 }
         if ($duplicates.Count -gt 0) {
-            $this.Logger.Information("Found $($duplicates.Count) duplicate files:")
+            $this.Logger.Information("Release $($Release) Found $($duplicates.Count) duplicate files:")
             foreach ($duplicate in $duplicates) {
                 $this.Logger.Information("File: $($duplicate.Value.FileName)")
                 $this.Logger.Information("  Count: $($duplicate.Value.Count)")
@@ -46,7 +46,7 @@ class DuplicateFileTracker {
                 }
             }
         } else {
-            $this.Logger.Information("No duplicate files found.")
+            $this.Logger.Information("Release $($Release) No duplicate files found.")
         }
     }
 
