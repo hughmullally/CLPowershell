@@ -3,6 +3,7 @@
 class ReleaseService {
     [string]$RootFolder
     [object]$Logger
+    [hashtable]$DuplicateFiles
 
     ReleaseService([string]$rootFolder, [object]$logger) {
         $this.RootFolder = $rootFolder
@@ -52,6 +53,37 @@ class ReleaseService {
         }
     }
 
+    [void] TrackDuplicateFile([string]$fileName, [string]$sourceFolder, [string]$targetFolder) {
+        # $key = "$fileName|$sourceFolder|$targetFolder"
+        $key = "$fileName"
+        if ($this.DuplicateFiles.ContainsKey($key)) {
+            $this.DuplicateFiles[$key].Count++
+            $this.Logger.Warning("Duplicate file found: $fileName (Count: $($this.DuplicateFiles[$key].Count))")
+        } else {
+            $this.DuplicateFiles[$key] = @{
+                FileName = $fileName
+                SourceFolder = $sourceFolder
+                TargetFolder = $targetFolder
+                Count = 1
+            }
+        }
+    }
+
+    [void] LogDuplicateFiles() {
+        $duplicates = $this.DuplicateFiles.GetEnumerator() | Where-Object { $_.Value.Count -gt 1 }
+        if ($duplicates.Count -gt 0) {
+            $this.Logger.Information("Found $($duplicates.Count) duplicate files:")
+            foreach ($duplicate in $duplicates) {
+                $this.Logger.Information("File: $($duplicate.Value.FileName)")
+                $this.Logger.Information("  Source: $($duplicate.Value.SourceFolder)")
+                $this.Logger.Information("  Target: $($duplicate.Value.TargetFolder)")
+                $this.Logger.Information("  Count: $($duplicate.Value.Count)")
+            }
+        } else {
+            $this.Logger.Information("No duplicate files found.")
+        }
+    }
+
     [void] ProcessRelease(
         [string]$releaseRootFolder,
         [string]$release,
@@ -61,6 +93,7 @@ class ReleaseService {
         [FileTrackingService]$fileTracker
     ) {
         try {
+            $this.DuplicateFiles = @{}  
             $this.Logger.Information("Processing release folder: $releaseRootFolder")
             $releaseObj = $this.GetRelease($release)
             $releaseFolder = $this.GetReleaseFolder($releaseObj)
@@ -94,17 +127,21 @@ class ReleaseService {
                     $this.Logger.Information("Created target folder: $targetFolder")
                 }
 
+                $ChildItems = Get-ChildItem -Path $sourceFolder -File
+
                 # Copy files
                 Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
                     $targetFile = Join-Path $targetFolder $_.Name
                     Copy-Item -Path $_.FullName -Destination $targetFile -Force
                     $fileTracker.TrackFile($_.Name, $release, $mapping.sourceFolder, $mapping.targetFolder)
+                    $this.TrackDuplicateFile($_.Name, $mapping.sourceFolder, $mapping.targetFolder)
                     $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
                 }
             }
 
             # Save updated file releases
             $fileTracker.SaveFileReleases()
+            $this.LogDuplicateFiles()
             
         }
         catch {
