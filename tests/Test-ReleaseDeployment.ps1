@@ -45,5 +45,5 @@ function Test-Confirmation {
 }
 
 # Run tests
- Test-Deployment
+Test-Deployment
 Test-Confirmation
