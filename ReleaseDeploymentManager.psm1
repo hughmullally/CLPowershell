@@ -118,6 +118,7 @@ foreach ($function in $publicFunctions) {
 # Import services in correct order
 $services = @(
     'FileTrackingService',
+    'DuplicateFileTracker',
     'ReleaseService',
     'ValidationService'
 )

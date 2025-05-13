@@ -3,11 +3,12 @@
 class ReleaseService {
     [string]$RootFolder
     [object]$Logger
-    [hashtable]$DuplicateFiles
+    [DuplicateFileTracker]$DuplicateTracker
 
     ReleaseService([string]$rootFolder, [object]$logger) {
         $this.RootFolder = $rootFolder
         $this.Logger = $logger
+        $this.DuplicateTracker = [DuplicateFileTracker]::new($logger)
     }
 
     [Release] GetRelease([string]$version) {
@@ -53,37 +54,6 @@ class ReleaseService {
         }
     }
 
-    [void] TrackDuplicateFile([string]$fileName, [string]$sourceFolder, [string]$targetFolder) {
-        # $key = "$fileName|$sourceFolder|$targetFolder"
-        $key = "$fileName"
-        if ($this.DuplicateFiles.ContainsKey($key)) {
-            $this.DuplicateFiles[$key].Count++
-            $this.Logger.Warning("Duplicate file found: $fileName (Count: $($this.DuplicateFiles[$key].Count))")
-        } else {
-            $this.DuplicateFiles[$key] = @{
-                FileName = $fileName
-                SourceFolder = $sourceFolder
-                TargetFolder = $targetFolder
-                Count = 1
-            }
-        }
-    }
-
-    [void] LogDuplicateFiles() {
-        $duplicates = $this.DuplicateFiles.GetEnumerator() | Where-Object { $_.Value.Count -gt 1 }
-        if ($duplicates.Count -gt 0) {
-            $this.Logger.Information("Found $($duplicates.Count) duplicate files:")
-            foreach ($duplicate in $duplicates) {
-                $this.Logger.Information("File: $($duplicate.Value.FileName)")
-                $this.Logger.Information("  Source: $($duplicate.Value.SourceFolder)")
-                $this.Logger.Information("  Target: $($duplicate.Value.TargetFolder)")
-                $this.Logger.Information("  Count: $($duplicate.Value.Count)")
-            }
-        } else {
-            $this.Logger.Information("No duplicate files found.")
-        }
-    }
-
     [void] ProcessRelease(
         [string]$releaseRootFolder,
         [string]$release,
@@ -93,7 +63,7 @@ class ReleaseService {
         [FileTrackingService]$fileTracker
     ) {
         try {
-            $this.DuplicateFiles = @{}  
+            $this.DuplicateTracker.Clear()
             $this.Logger.Information("Processing release folder: $releaseRootFolder")
             $releaseObj = $this.GetRelease($release)
             $releaseFolder = $this.GetReleaseFolder($releaseObj)
@@ -134,14 +104,14 @@ class ReleaseService {
                     $targetFile = Join-Path $targetFolder $_.Name
                     Copy-Item -Path $_.FullName -Destination $targetFile -Force
                     $fileTracker.TrackFile($_.Name, $release, $mapping.sourceFolder, $mapping.targetFolder)
-                    $this.TrackDuplicateFile($_.Name, $mapping.sourceFolder, $mapping.targetFolder)
+                    $this.DuplicateTracker.TrackFile($_.Name, $mapping.sourceFolder, $mapping.targetFolder)
                     $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
                 }
             }
 
             # Save updated file releases
             $fileTracker.SaveFileReleases()
-            $this.LogDuplicateFiles()
+            $this.DuplicateTracker.LogDuplicates()
             
         }
         catch {
@@ -197,8 +167,6 @@ class ReleaseService {
                     }
 
                     # Get all files in source folder
-                    # $sourceFiles = Get-ChildItem -Path $sourceFolder -File -Recurse
-                    # $targetFiles = Get-ChildItem -Path $targetFolder -File -Recurse
                     $sourceFiles = Get-ChildItem -Path $sourceFolder -File
                     $targetFiles = Get-ChildItem -Path $targetFolder -File
 
@@ -257,7 +225,6 @@ class ReleaseService {
         try {
             $this.Logger.Information("Starting release deployment for client: $targetClient")
             $releaseTracker = [FileTrackingService]::new($this.Logger, $gitRootFolder, $targetClient, "DeployTracker.csv")
-
 
             # Validate all releases before processing
             $releaseList = $releases.Split(',')
