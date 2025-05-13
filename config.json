@@ -25,10 +25,6 @@
             "targetFolder": "\\05 Standard Reports\\01 Cube Reports"
         },
         {
-            "sourceFolder": "\\Credit Risk\\DataMart Reports",
-            "targetFolder": "\\05 Standard Reports\\01 Cube Reports"
-        },
-        {
             "sourceFolder": "\\Credit Risk\\Reports\\DataMart Reports",
             "targetFolder": "\\05 Standard Reports\\02 DataMart Reports"
         },
