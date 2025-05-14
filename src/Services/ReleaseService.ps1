@@ -64,6 +64,8 @@ class ReleaseService {
     ) {
         try {
             $this.DuplicateTracker.Clear()
+            $csvPath = $this.GetTargetRootFolder($gitRootFolder, $client) + $($release) + "_DuplicateFiles.csv"
+            $this.DuplicateTracker.SetCSVFile($csvPath)
             $this.Logger.Information("Processing release folder: $releaseRootFolder")
             $releaseObj = $this.GetRelease($release)
             $releaseFolder = $this.GetReleaseFolder($releaseObj)
@@ -225,6 +227,7 @@ class ReleaseService {
         try {
             $this.Logger.Information("Starting release deployment for client: $targetClient")
             $releaseTracker = [FileTrackingService]::new($this.Logger, $gitRootFolder, $targetClient, "DeployTracker.csv")
+            $duplicateCsv = $this.GetTargetRootFolder($gitRootFolder, $targetClient) + "\DuplicateFiles.csv"
 
             # Validate all releases before processing
             $releaseList = $releases.Split(',')
