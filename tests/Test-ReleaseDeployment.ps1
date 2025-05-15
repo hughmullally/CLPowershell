@@ -44,6 +44,23 @@ function Test-Confirmation {
     })
 }
 
+function DeployClient([string] $client, [string] $releases)
+{
+    $tester = [ReleaseDeploymentTest]::new()
+    $tester.RunTest("$($client) Deployment", {
+        Deploy-Release -TargetClient $client -Release $releases
+    })
+}
+
+function ConfirmClient([string] $client, [string] $releases) {
+    $tester = [ReleaseDeploymentTest]::new()
+    $tester.RunTest("$($client) Confirmation", {
+        Confirm-ReleaseDeployment -TargetClient $client -Release $releases
+    })
+}
+
 # Run tests
-Test-Deployment
-Test-Confirmation
+# Test-Deployment
+# Test-Confirmation
+
+DeployClient -client "Anglo" -releases "9.1.2.0, 9.1.2.44"
