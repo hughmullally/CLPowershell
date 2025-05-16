@@ -69,6 +69,36 @@
             "sourceFolder": "\\Credit Risk\\Workflow XML\\Counterparty Scoring Workflow",
             "targetFolder": "\\06 Standard Workflows",
             "recurse": false
+        },
+        {
+            "sourceFolder": "\\Credit\\Cube DB",
+            "targetFolder": "\\03 Cubes",
+            "recurse": false
+        },
+        {
+            "sourceFolder": "\\Credit\\Reports\\Cube Reports",
+            "targetFolder": "\\05 Standard Reports\\01 Cube Reports",
+            "recurse": false
+        },
+        {
+            "sourceFolder": "\\Credit\\Reports\\DataMart Reports",
+            "targetFolder": "\\05 Standard Reports\\02 DataMart Reports",
+            "recurse": false
+        },
+        {
+            "sourceFolder": "\\Credit\\Reports\\PowerBI",
+            "targetFolder": "\\05 Standard Reports\\03 PowerBI",
+            "recurse": false
+        },
+        {
+            "sourceFolder": "\\Credit\\Workflow XML",
+            "targetFolder": "\\06 Standard Workflows",
+            "recurse": false
+        },
+        {
+            "sourceFolder": "\\Credit\\Workflow XML\\Counterparty Scoring Workflow",
+            "targetFolder": "\\06 Standard Workflows",
+            "recurse": false
         }
     ],
     "defaultPaths": {

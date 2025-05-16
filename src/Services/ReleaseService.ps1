@@ -63,6 +63,25 @@ class ReleaseService {
         }
     }
 
+    hidden [void] CopyFiles(
+        [string]$sourceFolder,
+        [string]$targetFolder,
+        [string]$release,
+        [string]$sourceFolderName,
+        [string]$targetFolderName,
+        [FileTrackingService]$fileTracker
+    ) {
+        # Copy files from root folder
+        Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
+            $targetFile = Join-Path $targetFolder $_.Name
+            Copy-Item -Path $_.FullName -Destination $targetFile -Force
+            $key = "$targetFolderName\$($_.Name)"
+            $fileTracker.TrackFile($key, $release, $sourceFolderName, $targetFolderName)
+            $this.DuplicateTracker.TrackFile($key, $sourceFolderName, $targetFolderName)
+            $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
+        }
+    }
+
     [void] CopyFilesAndSubfoldersFromSourceToTarget(
         [string]$sourceFolder,
         [string]$targetFolder,
@@ -84,14 +103,8 @@ class ReleaseService {
             $this.Logger.Information("Created target folder: $targetFolder")
         }
 
-        # Copy files from root folder
-        Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
-            $targetFile = Join-Path $targetFolder $_.Name
-            Copy-Item -Path $_.FullName -Destination $targetFile -Force
-            $fileTracker.TrackFile($_.Name, $release, $sourceFolderName, $targetFolderName)
-            $this.DuplicateTracker.TrackFile($targetFile, $sourceFolderName, $targetFolderName)
-            $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
-        }
+        # Copy files from current folder
+        $this.CopyFiles($sourceFolder, $targetFolder, $release, $sourceFolderName, $targetFolderName, $fileTracker)
 
         # Process subfolders recursively
         Get-ChildItem -Path $sourceFolder -Directory | ForEach-Object {
@@ -117,7 +130,6 @@ class ReleaseService {
         }
     }
 
-
     [void] CopyFilesFromSourceToTarget(
         [string]$sourceFolder,
         [string]$targetFolder,
@@ -139,14 +151,8 @@ class ReleaseService {
             $this.Logger.Information("Created target folder: $targetFolder")
         }
 
-        # Copy files
-        Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
-            $targetFile = Join-Path $targetFolder $_.Name
-            Copy-Item -Path $_.FullName -Destination $targetFile -Force
-            $fileTracker.TrackFile($_.Name, $release, $sourceFolderName, $targetFolderName)
-            $this.DuplicateTracker.TrackFile($targetFile, $sourceFolderName, $targetFolderName)
-            $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
-        }
+        # Copy files from current folder
+        $this.CopyFiles($sourceFolder, $targetFolder, $release, $sourceFolderName, $targetFolderName, $fileTracker)
     }
 
     [void] ProcessRelease(
