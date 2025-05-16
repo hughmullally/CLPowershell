@@ -2,53 +2,64 @@
     "folderMappings": [
         {
             "sourceFolder": "\\Core Components\\Database Scripts\\1. Upgrade Release Script Files",
-            "targetFolder": "01 Database Scripts\\01 Upgrade Scripts"
+            "targetFolder": "01 Database Scripts\\01 Upgrade Scripts",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Core Components\\Database Scripts\\2. Upgrade Release Script Files (RiskCubed)",
-            "targetFolder": "01 Database Scripts\\01 Upgrade Scripts"
+            "targetFolder": "01 Database Scripts\\01 Upgrade Scripts",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Core Components\\Loaders",
-            "targetFolder": "\\04 Loaders\\Standard Packages"
+            "targetFolder": "\\04 Loaders\\Standard Packages",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Core Components\\RiskCubed Portal\\RiskCubed",
-            "targetFolder": "\\02 RiskCubedKit"
+            "targetFolder": "\\02 RiskCubedKit",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Core Components\\RiskCubed Portal\\RiskCubedAPI Kit",
-            "targetFolder": "\\02 RiskCubedKit"
+            "targetFolder": "\\02 RiskCubedKit",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Core Components\\RiskCubed Portal\\RiskCubedAPI",
-            "targetFolder": "\\02 RiskCubedKit"
+            "targetFolder": "\\02 RiskCubedKit",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Credit Risk\\Cube DB",
-            "targetFolder": "\\03 Cubes"
+            "targetFolder": "\\03 Cubes",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Credit Risk\\Reports\\Cube Reports",
-            "targetFolder": "\\05 Standard Reports\\01 Cube Reports"
+            "targetFolder": "\\05 Standard Reports\\01 Cube Reports",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Credit Risk\\Reports\\DataMart Reports",
-            "targetFolder": "\\05 Standard Reports\\02 DataMart Reports"
+            "targetFolder": "\\05 Standard Reports\\02 DataMart Reports",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Credit Risk\\Reports\\PowerBI",
-            "targetFolder": "\\05 Standard Reports\\03 PowerBI"
+            "targetFolder": "\\05 Standard Reports\\03 PowerBI",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Credit Risk\\Workflow XML",
-            "targetFolder": "\\06 Standard Workflows"
+            "targetFolder": "\\06 Standard Workflows",
+            "recurse": false
         },
         {
             "sourceFolder": "\\Credit Risk\\Workflow XML\\Counterparty Scoring Workflow",
-            "targetFolder": "\\06 Standard Workflows"
-        },
-        
+            "targetFolder": "\\06 Standard Workflows",
+            "recurse": false
+        }
     ],
     "defaultPaths": {
         "rootFolder": "c:\\releases",

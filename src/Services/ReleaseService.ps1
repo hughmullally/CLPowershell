@@ -63,6 +63,37 @@ class ReleaseService {
         }
     }
 
+    [void] CopyFilesFromSourceToTarget(
+        [string]$sourceFolder,
+        [string]$targetFolder,
+        [string]$release,
+        [string]$sourceFolderName,
+        [string]$targetFolderName,
+        [FileTrackingService]$fileTracker
+    ) {
+        if (-not (Test-Path $sourceFolder)) {
+            $this.Logger.Warning("Source folder not found: $sourceFolder")
+            return
+        }
+        else {
+            $this.Logger.Information("Source folder found: $sourceFolder")
+        }
+
+        if (-not (Test-Path $targetFolder)) {
+            New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
+            $this.Logger.Information("Created target folder: $targetFolder")
+        }
+
+        # Copy files
+        Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
+            $targetFile = Join-Path $targetFolder $_.Name
+            Copy-Item -Path $_.FullName -Destination $targetFile -Force
+            $fileTracker.TrackFile($_.Name, $release, $sourceFolderName, $targetFolderName)
+            $this.DuplicateTracker.TrackFile($_.Name, $sourceFolderName, $targetFolderName)
+            $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
+        }
+    }
+
     [void] ProcessRelease(
         [string]$releaseRootFolder,
         [string]$release,
@@ -97,30 +128,15 @@ class ReleaseService {
                 $releaseFolderString = $releaseFolder.ReleaseFolder
                 $sourceFolder = Join-Path $releaseFolderString $mapping.sourceFolder
                 $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
-
-                if (-not (Test-Path $sourceFolder)) {
-                    $this.Logger.Warning("Source folder not found: $sourceFolder")
-                    continue
-                }
-                else {
-                    $this.Logger.Information("Source folder found: $sourceFolder")
-                }
-
-                if (-not (Test-Path $targetFolder)) {
-                    New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
-                    $this.Logger.Information("Created target folder: $targetFolder")
-                }
-
-                $ChildItems = Get-ChildItem -Path $sourceFolder -File
-
-                # Copy files
-                Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
-                    $targetFile = Join-Path $targetFolder $_.Name
-                    Copy-Item -Path $_.FullName -Destination $targetFile -Force
-                    $fileTracker.TrackFile($_.Name, $release, $mapping.sourceFolder, $mapping.targetFolder)
-                    $this.DuplicateTracker.TrackFile($_.Name, $mapping.sourceFolder, $mapping.targetFolder)
-                    $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
-                }
+                
+                $this.CopyFilesFromSourceToTarget(
+                    $sourceFolder,
+                    $targetFolder,
+                    $release,
+                    $mapping.sourceFolder,
+                    $mapping.targetFolder,
+                    $fileTracker
+                )
             }
 
             # Save updated file releases
@@ -169,6 +185,7 @@ class ReleaseService {
                 foreach ($mapping in $config.folderMappings) {
                     $sourceFolder = Join-Path $releaseFolder.ReleaseFolder $mapping.sourceFolder
                     $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
+                    $recurse = $mapping.recurse
 
                     if (-not (Test-Path $sourceFolder)) {
                         $this.Logger.Warning("Source folder not found: $sourceFolder")
