@@ -6,9 +6,19 @@
             "recurse": false
         },
         {
+            "sourceFolder": "\\Core Components\\Database Scripts\\1. Upgrade Scripts",
+            "targetFolder": "01 Database Scripts\\01 Upgrade Scripts",
+            "recurse": false
+        },
+        {
             "sourceFolder": "\\Core Components\\Database Scripts\\2. Upgrade Release Script Files (RiskCubed)",
             "targetFolder": "01 Database Scripts\\01 Upgrade Scripts",
             "recurse": false
+        },
+        {
+            "sourceFolder": "\\Core Components\\CollateralWalkForwardCalc",
+            "targetFolder": "\\07 Tree\\01 Software",
+            "recurse": true
         },
         {
             "sourceFolder": "\\Core Components\\Loaders",

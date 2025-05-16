@@ -1,7 +1,18 @@
 # Import the required modules
 # using module ..\ReleaseDeploymentManager.psm1
 
+# Client-Release mapping table
+$ClientReleaseMap = @{
+    'Anglo'         = '9.1.2.0, 9.1.2.44'
+    'Drax'          = '9.2.4.0, 9.2.4.5'
+    'EnBW'          = '10.0.0.0, 10.0.0.13'
+    'Gunvor'        = '10.0.0.0, 10.0.0.27'
+    'Wintershall'   = '9.2.2.0, 9.2.2.34'
+}
+
 class ReleaseDeploymentTest {
+
+    
     [void] Initialize() {
         $modulePath = Join-Path $PWD.Path "ReleaseDeploymentManager.psd1"
         Remove-Module ReleaseDeploymentManager -ErrorAction SilentlyContinue
@@ -33,6 +44,7 @@ class ReleaseDeploymentTest {
 function Test-Deployment {
     $tester = [ReleaseDeploymentTest]::new()
     $tester.RunTest("Test Multiple releases", {
+        
         Deploy-Release -TargetClient "Drax" -Release "9.2.0, 9.2.4.0, 9.2.4.5"
     })
 }
@@ -44,18 +56,26 @@ function Test-Confirmation {
     })
 }
 
-function DeployClient([string] $client, [string] $releases)
+function DeployClient([string] $client)
 {
     $tester = [ReleaseDeploymentTest]::new()
     $tester.RunTest("$($client) Deployment", {
-        Deploy-Release -TargetClient $client -Release $releases
+        $clientReleases = $ClientReleaseMap[$client]
+        if ($null -eq $clientReleases) {
+            throw "No releases found for client $client"
+        }
+        Deploy-Release -TargetClient $client -Release $clientReleases
     })
 }
 
-function ConfirmClient([string] $client, [string] $releases) {
+function ConfirmClient([string] $client) {
     $tester = [ReleaseDeploymentTest]::new()
     $tester.RunTest("$($client) Confirmation", {
-        Confirm-ReleaseDeployment -TargetClient $client -Release $releases
+        $clientReleases = $ClientReleaseMap[$client]
+        if ($null -eq $clientReleases) {
+            throw "No releases found for client $client"
+        }
+        Confirm-ReleaseDeployment -TargetClient $client -Release $clientReleases
     })
 }
 
@@ -63,5 +83,5 @@ function ConfirmClient([string] $client, [string] $releases) {
 # Test-Deployment
 # Test-Confirmation
 
-DeployClient -client "Anglo" -releases "9.1.2.0, 9.1.2.44"#
-# ConfirmClient -client "Anglo" -releases "9.1.2.0, 9.1.2.44"
+DeployClient -client "EnBW"
+# ConfirmClient -client "Anglo"

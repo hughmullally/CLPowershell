@@ -89,7 +89,7 @@ class ReleaseService {
             $targetFile = Join-Path $targetFolder $_.Name
             Copy-Item -Path $_.FullName -Destination $targetFile -Force
             $fileTracker.TrackFile($_.Name, $release, $sourceFolderName, $targetFolderName)
-            $this.DuplicateTracker.TrackFile($_.Name, $sourceFolderName, $targetFolderName)
+            $this.DuplicateTracker.TrackFile($targetFile, $sourceFolderName, $targetFolderName)
             $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
         }
 
@@ -144,7 +144,7 @@ class ReleaseService {
             $targetFile = Join-Path $targetFolder $_.Name
             Copy-Item -Path $_.FullName -Destination $targetFile -Force
             $fileTracker.TrackFile($_.Name, $release, $sourceFolderName, $targetFolderName)
-            $this.DuplicateTracker.TrackFile($_.Name, $sourceFolderName, $targetFolderName)
+            $this.DuplicateTracker.TrackFile($targetFile, $sourceFolderName, $targetFolderName)
             $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
         }
     }
@@ -185,7 +185,7 @@ class ReleaseService {
                 $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
                 $recurse = $mapping.recurse
                 
-                if ($recurse) {
+                if (-not $recurse) {
                     $this.CopyFilesFromSourceToTarget(
                         $sourceFolder,
                         $targetFolder,
