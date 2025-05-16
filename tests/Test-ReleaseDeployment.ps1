@@ -63,4 +63,5 @@ function ConfirmClient([string] $client, [string] $releases) {
 # Test-Deployment
 # Test-Confirmation
 
-DeployClient -client "Anglo" -releases "9.1.2.0, 9.1.2.44"
+DeployClient -client "Anglo" -releases "9.1.2.0, 9.1.2.44"#
+# ConfirmClient -client "Anglo" -releases "9.1.2.0, 9.1.2.44"

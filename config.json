@@ -5,6 +5,10 @@
             "targetFolder": "01 Database Scripts\\01 Upgrade Scripts"
         },
         {
+            "sourceFolder": "\\Core Components\\Database Scripts\\2. Upgrade Release Script Files (RiskCubed)",
+            "targetFolder": "01 Database Scripts\\01 Upgrade Scripts"
+        },
+        {
             "sourceFolder": "\\Core Components\\Loaders",
             "targetFolder": "\\04 Loaders\\Standard Packages"
         },
@@ -14,6 +18,10 @@
         },
         {
             "sourceFolder": "\\Core Components\\RiskCubed Portal\\RiskCubedAPI Kit",
+            "targetFolder": "\\02 RiskCubedKit"
+        },
+        {
+            "sourceFolder": "\\Core Components\\RiskCubed Portal\\RiskCubedAPI",
             "targetFolder": "\\02 RiskCubedKit"
         },
         {
@@ -39,14 +47,15 @@
         {
             "sourceFolder": "\\Credit Risk\\Workflow XML\\Counterparty Scoring Workflow",
             "targetFolder": "\\06 Standard Workflows"
-        }
+        },
+        
     ],
     "defaultPaths": {
         "rootFolder": "c:\\releases",
         "gitRootFolder": "c:\\Git"
     },
     "logging": {
-        "logPath": "C:\\git\\ClientReleases\\Drax\\Release\\Deploy-Release.log",
+        "logPath": "C:\\git\\ClientReleases\\{client}\\Release\\Deploy-Release.log",
         "logLevel": "Information"
     }
 } 

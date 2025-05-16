@@ -13,10 +13,12 @@ Add-Type -AssemblyName System.Drawing
 class GUILogger {
     [object]$LogBox
     [string]$LogLevel
+    [string]$LogPath
 
-    GUILogger([object]$logBox, [string]$logLevel) {
+    GUILogger([object]$logBox, [string]$logLevel, [string]$logPath) {
         $this.LogBox = $logBox
         $this.LogLevel = $logLevel
+        $this.LogPath = $logPath
     }
 
     [void]Log([string]$message, [string]$level) {
@@ -213,8 +215,8 @@ $deployButton.Add_Click({
         $config = Get-Content $configTextBox.Text | ConvertFrom-Json
         
         # Initialize services
-        $logger = [GUILogger]::new($logBox, $config.logging.logLevel)
-        $releaseService = [ReleaseService]::new($config.defaultPaths.rootFolder, $logger)
+        $logger = [GUILogger]::new($logBox, $config.logging.logLevel, $config.logging.logPath)
+        $releaseService = [ReleaseService]::new($config.defaultPaths.rootFolder, $logger, $clientCombo.SelectedItem)
         $fileTracker = [FileTrackingService]::new($logger, $config.defaultPaths.gitRootFolder, $clientCombo.SelectedItem, "DeployTracker.csv")
         
         # Get selected releases
@@ -266,7 +268,7 @@ $confirmButton.Add_Click({
         $config = Get-Content $configTextBox.Text | ConvertFrom-Json
         
         # Initialize services
-        $logger = [GUILogger]::new($logBox, $config.logging.logLevel)
+        $logger = [GUILogger]::new($logBox, $config.logging.logLevel, $config.logging.logPath)
         $releaseService = [ReleaseService]::new($config.defaultPaths.rootFolder, $logger)
         
         # Get selected releases

@@ -45,7 +45,7 @@ function Confirm-ReleaseDeployment {
         $logger.Information("Starting deployment confirmation for client: $targetClient, releases: $releases")
 
         # Create ReleaseService instance
-        $releaseService = [ReleaseService]::new($rootFolder, $logger)
+        $releaseService = [ReleaseService]::new($rootFolder, $logger, $targetClient)
 
         # Get validation results
         $results = $releaseService.ConfirmReleaseDeployment($targetClient, $releases, $gitRootFolder, $config, $checkContents)

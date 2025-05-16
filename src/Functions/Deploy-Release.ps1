@@ -41,7 +41,7 @@ function Deploy-Release {
         $logger.Information("Starting release deployment for client: $targetClient")
 
         # Create ReleaseService instance
-        $releaseService = [ReleaseService]::new($rootFolder, $logger)
+        $releaseService = [ReleaseService]::new($rootFolder, $logger, $targetClient)
 
 
         # Process all releases

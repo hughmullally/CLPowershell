@@ -5,10 +5,19 @@ class ReleaseService {
     [object]$Logger
     [DuplicateFileTracker]$DuplicateTracker
 
-    ReleaseService([string]$rootFolder, [object]$logger) {
+    ReleaseService([string]$rootFolder, [object]$logger, [string]$client) {
         $this.RootFolder = $rootFolder
         $this.Logger = $logger
         $this.DuplicateTracker = [DuplicateFileTracker]::new($logger)
+        
+        # Replace client name in log path if it exists in the logger
+        if ($logger.LogPath) {
+            $logger.LogPath = $this.ReplaceClientInLogPath($logger.LogPath, $client)
+        }
+    }
+
+    [string] ReplaceClientInLogPath([string]$logPath, [string]$client) {
+        return $logPath -replace '{client}', $client
     }
 
     [Release] GetRelease([string]$version) {
@@ -93,6 +102,9 @@ class ReleaseService {
                     $this.Logger.Warning("Source folder not found: $sourceFolder")
                     continue
                 }
+                else {
+                    $this.Logger.Information("Source folder found: $sourceFolder")
+                }
 
                 if (-not (Test-Path $targetFolder)) {
                     New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
@@ -161,6 +173,9 @@ class ReleaseService {
                     if (-not (Test-Path $sourceFolder)) {
                         $this.Logger.Warning("Source folder not found: $sourceFolder")
                         continue
+                    }
+                    else {
+                        $this.Logger.Information("Source folder found: $sourceFolder")
                     }
 
                     if (-not (Test-Path $targetFolder)) {
