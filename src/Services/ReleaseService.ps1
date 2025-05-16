@@ -63,6 +63,61 @@ class ReleaseService {
         }
     }
 
+    [void] CopyFilesAndSubfoldersFromSourceToTarget(
+        [string]$sourceFolder,
+        [string]$targetFolder,
+        [string]$release,
+        [string]$sourceFolderName,
+        [string]$targetFolderName,
+        [FileTrackingService]$fileTracker
+    ) {
+        if (-not (Test-Path $sourceFolder)) {
+            $this.Logger.Warning("Source folder not found: $sourceFolder")
+            return
+        }
+        else {
+            $this.Logger.Information("Source folder found: $sourceFolder")
+        }
+
+        if (-not (Test-Path $targetFolder)) {
+            New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
+            $this.Logger.Information("Created target folder: $targetFolder")
+        }
+
+        # Copy files from root folder
+        Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
+            $targetFile = Join-Path $targetFolder $_.Name
+            Copy-Item -Path $_.FullName -Destination $targetFile -Force
+            $fileTracker.TrackFile($_.Name, $release, $sourceFolderName, $targetFolderName)
+            $this.DuplicateTracker.TrackFile($_.Name, $sourceFolderName, $targetFolderName)
+            $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
+        }
+
+        # Process subfolders recursively
+        Get-ChildItem -Path $sourceFolder -Directory | ForEach-Object {
+            $sourceSubFolder = $_.FullName
+            $relativePath = $_.Name
+            $targetSubFolder = Join-Path $targetFolder $relativePath
+
+            # Create target subfolder if it doesn't exist
+            if (-not (Test-Path $targetSubFolder)) {
+                New-Item -ItemType Directory -Path $targetSubFolder -Force | Out-Null
+                $this.Logger.Information("Created target subfolder: $targetSubFolder")
+            }
+
+            # Recursively copy files from subfolder
+            $this.CopyFilesAndSubfoldersFromSourceToTarget(
+                $sourceSubFolder,
+                $targetSubFolder,
+                $release,
+                (Join-Path $sourceFolderName $relativePath),
+                (Join-Path $targetFolderName $relativePath),
+                $fileTracker
+            )
+        }
+    }
+
+
     [void] CopyFilesFromSourceToTarget(
         [string]$sourceFolder,
         [string]$targetFolder,
@@ -128,15 +183,28 @@ class ReleaseService {
                 $releaseFolderString = $releaseFolder.ReleaseFolder
                 $sourceFolder = Join-Path $releaseFolderString $mapping.sourceFolder
                 $targetFolder = Join-Path $targetRootFolder $mapping.targetFolder
+                $recurse = $mapping.recurse
                 
-                $this.CopyFilesFromSourceToTarget(
-                    $sourceFolder,
-                    $targetFolder,
-                    $release,
-                    $mapping.sourceFolder,
-                    $mapping.targetFolder,
-                    $fileTracker
-                )
+                if ($recurse) {
+                    $this.CopyFilesFromSourceToTarget(
+                        $sourceFolder,
+                        $targetFolder,
+                        $release,
+                        $mapping.sourceFolder,
+                        $mapping.targetFolder,
+                        $fileTracker
+                    )
+                }
+                else {
+                    $this.CopyFilesAndSubfoldersFromSourceToTarget(
+                        $sourceFolder,
+                        $targetFolder,
+                        $release,
+                        $mapping.sourceFolder,
+                        $mapping.targetFolder,
+                        $fileTracker
+                    )
+                }
             }
 
             # Save updated file releases
