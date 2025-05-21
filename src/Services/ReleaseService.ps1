@@ -232,7 +232,7 @@ class ReleaseService {
             $processedFiles = @{}
 
             # Load existing file releases
-            $fileTracker = [FileTrackingService]::new($this.Logger, $gitRootFolder, $targetClient, "Confirm-Release.csv")
+            $fileTracker = [FileTrackingService]::new($this.Logger, $gitRootFolder, $targetClient, "confirm-release-tracker.csv")
             $fileTracker.LoadExistingFileReleases()
 
             # Process releases in version order (newest first)
@@ -309,7 +309,7 @@ class ReleaseService {
                         }
 
                         # Track the file with its release version
-                        $fileTracker.TrackFile($sourceFile.Name, $release.Version, $mapping.sourceFolder, $mapping.targetFolder)
+                        $fileTracker.TrackFile("$($mapping.targetFolder)\$($sourceFile.Name)"  , $release.Version, $mapping.sourceFolder, $mapping.targetFolder)
                         $this.Logger.Information("Release $($release.Version) - $sourceFile.Name matches")
                         
                         $results += $result
@@ -332,7 +332,7 @@ class ReleaseService {
     [void] ProcessAllReleases([string]$targetClient, [string]$releases, [string]$gitRootFolder, $config) {
         try {
             $this.Logger.Information("Starting release deployment for client: $targetClient")
-            $releaseTracker = [FileTrackingService]::new($this.Logger, $gitRootFolder, $targetClient, "DeployTracker.csv")
+            $releaseTracker = [FileTrackingService]::new($this.Logger, $gitRootFolder, $targetClient, "deploy-release-tracker.csv")
             $duplicateCsv = $this.GetTargetRootFolder($gitRootFolder, $targetClient) + "\DuplicateFiles.csv"
 
             # Validate all releases before processing

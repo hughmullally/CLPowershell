@@ -18,4 +18,8 @@ logs/
 TestResults/
 
 # Keep config.json
-!config.json 
+!config.json
+
+# Ignore datestamped tracking files but keep the main tracking file
+*_????????_??????.csv 
+*.log

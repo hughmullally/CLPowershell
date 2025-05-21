@@ -217,7 +217,7 @@ $deployButton.Add_Click({
         # Initialize services
         $logger = [GUILogger]::new($logBox, $config.logging.logLevel, $config.logging.logPath)
         $releaseService = [ReleaseService]::new($config.defaultPaths.rootFolder, $logger, $clientCombo.SelectedItem)
-        $fileTracker = [FileTrackingService]::new($logger, $config.defaultPaths.gitRootFolder, $clientCombo.SelectedItem, "DeployTracker.csv")
+        $fileTracker = [FileTrackingService]::new($logger, $config.defaultPaths.gitRootFolder, $clientCombo.SelectedItem, "deploy-release-tracker.csv")
         
         # Get selected releases
         $releases = $releaseList.SelectedItems -join ","

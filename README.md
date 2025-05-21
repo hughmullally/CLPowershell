@@ -116,8 +116,8 @@ Configure logging in `config.json`:
 
 The tool generates several CSV files for tracking:
 
-- `DeployTracker.csv`: Tracks all file deployments
-- `Confirm-Release.csv`: Records deployment validation results
+- `deploy-release-tracker.csv`: Tracks all file deployments
+- `confirm-release-tracker.csv`: Records deployment validation results
 
 ## Troubleshooting
 

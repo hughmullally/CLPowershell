@@ -54,8 +54,8 @@ class FileTrackingService {
         $newCsvPath = Join-Path $csvFolder $newCsvFileName
         
         if (Test-Path $this.CsvPath) {
-            Rename-Item -Path $this.CsvPath -NewName $newCsvPath -Force
-            $this.Logger.Information("Renamed tracking file to: $newCsvPath")
+            Copy-Item -Path $this.CsvPath -Destination $newCsvPath -Force
+            $this.Logger.Information("Copied tracking file to: $newCsvPath")
         }
     }
 
@@ -65,7 +65,7 @@ class FileTrackingService {
             SourceFolder = $sourceFolder
             TargetFolder = $targetFolder
         }
-        $this.Logger.Debug("Tracked file: $fileName from release: $release (source: $sourceFolder, target: $targetFolder)")
+        $this.Logger.Information("Tracked file: $fileName from release: $release (source: $sourceFolder, target: $targetFolder)")
     }
 
     [string] GetFileRelease([string]$fileName) {
