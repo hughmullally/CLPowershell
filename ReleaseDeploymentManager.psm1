@@ -85,8 +85,7 @@ $privateFunctions = @(
     'Test-ReleaseFormat',
     'Test-Configuration',
     'Test-FileSize',
-    'New-Logger',
-    'Process-Release'
+    'New-Logger'
 )
 
 foreach ($function in $privateFunctions) {
