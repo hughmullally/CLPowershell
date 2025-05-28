@@ -82,7 +82,7 @@ function ConfirmClient([string] $client) {
 # Run tests
 # Test-Deployment
 # Test-Confirmation
-
-DeployClient -client "Anglo"
-ConfirmClient -client "Anglo"
+$client = "Wintershall"
+DeployClient -client $client
+ConfirmClient -client $client
 

@@ -51,6 +51,11 @@
             "recurse": false
         },
         {
+            "sourceFolder": "\\Credit Risk\\Reports",
+            "targetFolder": "\\05 Standard Reports\\01 Cube Reports",
+            "recurse": false
+        },
+        {
             "sourceFolder": "\\Credit Risk\\Reports\\DataMart Reports",
             "targetFolder": "\\05 Standard Reports\\02 DataMart Reports",
             "recurse": false
