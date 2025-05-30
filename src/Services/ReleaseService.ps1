@@ -73,7 +73,7 @@ class ReleaseService {
     ) {
         # Copy files from root folder
         Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
-            if ($_.Extension -notin '.exe', '.abf') {
+            if ($_.Extension -notin '.exe', '.abf', '.dll', '.pdb') {
                 $targetFile = Join-Path $targetFolder $_.Name
                 Copy-Item -Path $_.FullName -Destination $targetFile -Force
                 $key = "$targetFolderName\$($_.Name)"
