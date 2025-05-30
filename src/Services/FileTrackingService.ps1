@@ -1,10 +1,13 @@
 #Requires -Version 5.1
 
+# Table of files to exclude from tracking
+
+
 class FileTrackingService {
     [object]$Logger
     [hashtable]$FileReleaseTracker
     [string]$CsvPath
-
+    
     FileTrackingService([object]$logger, $gitRootFolder, $Client, [string]$csvFileName ) {
         $this.Logger = $logger
         $this.FileReleaseTracker = @{}
@@ -60,12 +63,28 @@ class FileTrackingService {
     }
 
     [void] TrackFile([string]$fileName, [string]$release, [string]$sourceFolder, [string]$targetFolder) {
-        $this.FileReleaseTracker[$fileName] = @{
-            Release = $release
-            SourceFolder = $sourceFolder
-            TargetFolder = $targetFolder
+        [hashtable] $ExcludedFiles = @{
+            "Microsoft.Data.SqlClient.dll" = $true
+            "System.Data.SqlClient.dll" = $true
+            "System.Runtime.Caching.dll" = $true
+            "System.Security.Cryptography.ProtectedData.dll" = $true
+            "System.Text.Encodings.Web.dll" = $true
+            "sni.dll" = $true
         }
-        $this.Logger.Information("Tracked file: $fileName from release: $release (source: $sourceFolder, target: $targetFolder)")
+        
+        $fileNameOnly = Split-Path $fileName -Leaf
+        $this.Logger.Information("FileNameOnly: $fileNameOnly")
+        if (-not $ExcludedFiles.ContainsKey($fileNameOnly)) {
+            $this.FileReleaseTracker[$fileName] = @{
+                Release = $release
+                SourceFolder = $sourceFolder
+                TargetFolder = $targetFolder
+            }
+            $this.Logger.Information("Tracked file: $fileName from release: $release (source: $sourceFolder, target: $targetFolder)")
+        }
+        else {
+            $this.Logger.Information("Excluded file: $fileName from release: $release (source: $sourceFolder, target: $targetFolder)")
+        }
     }
 
     [string] GetFileRelease([string]$fileName) {

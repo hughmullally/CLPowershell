@@ -224,6 +224,62 @@ class ReleaseService {
         }
     }
 
+    hidden [void] ValidateFiles(
+        [string]$sourceFolder,
+        [string]$targetFolder,
+        [string]$release,
+        [string]$sourceFolderName,
+        [string]$targetFolderName,
+        [FileTrackingService]$fileTracker,
+        [hashtable]$processedFiles,
+        [array]$results,
+        [ref]$errors,
+        [bool]$checkContents
+    ) {
+        # Get all files in source folder
+        $sourceFiles = Get-ChildItem -Path $sourceFolder -File
+        $targetFiles = Get-ChildItem -Path $targetFolder -File
+
+        foreach ($sourceFile in $sourceFiles) {
+            $relativePath = $sourceFile.FullName.Substring($sourceFolder.Length)
+            $targetFile = Join-Path $targetFolder $relativePath
+            $this.Logger.Information("Relative: $relativePath")
+
+            if ($processedFiles.ContainsKey($relativePath)) {
+                continue
+            }
+
+            $result = [ValidationResult]::new($relativePath, $release)
+
+            if (-not (Test-Path $targetFile)) {
+                $result.SetError("Target file not found")
+                $errors.Value++
+            }
+            else {
+                $targetFileInfo = Get-Item $targetFile
+                if ($sourceFile.Length -ne $targetFileInfo.Length) {
+                    $result.SetError("File size mismatch")
+                    $errors.Value++
+                }
+                elseif ($checkContents) {
+                    $sourceHash = Get-FileHash -Path $sourceFile.FullName -Algorithm SHA256
+                    $targetHash = Get-FileHash -Path $targetFile -Algorithm SHA256
+                    if ($sourceHash.Hash -ne $targetHash.Hash) {
+                        $result.SetError("File content mismatch")
+                        $errors.Value++
+                    }
+                }
+            }
+
+            # Track the file with its release version
+            $fileTracker.TrackFile("$targetFolderName\$($sourceFile.Name)", $release, $sourceFolderName, $targetFolderName)
+            $this.Logger.Information("Release $release - $($sourceFile.Name) matches")
+            
+            $results += $result
+            $processedFiles[$relativePath] = $true
+        }
+    }
+
     [array] ConfirmReleaseDeployment([string]$targetClient, [string]$releases, [string]$gitRootFolder, $config, [bool]$checkContents = $false) {
         try {
             $targetRootFolder = $this.GetTargetRootFolder($gitRootFolder, $targetClient)
@@ -274,46 +330,35 @@ class ReleaseService {
                         continue
                     }
 
-                    # Get all files in source folder
-                    $sourceFiles = Get-ChildItem -Path $sourceFolder -File
-                    $targetFiles = Get-ChildItem -Path $targetFolder -File
-
-                    foreach ($sourceFile in $sourceFiles) {
-                        $relativePath = $sourceFile.FullName.Substring($sourceFolder.Length)
-                        $targetFile = Join-Path $targetFolder $relativePath
-
-                        if ($processedFiles.ContainsKey($relativePath)) {
-                            continue
-                        }
-
-                        $result = [ValidationResult]::new($relativePath, $release.Version)
-
-                        if (-not (Test-Path $targetFile)) {
-                            $result.SetError("Target file not found")
-                            $errors++
-                        }
-                        else {
-                            $targetFileInfo = Get-Item $targetFile
-                            if ($sourceFile.Length -ne $targetFileInfo.Length) {
-                                $result.SetError("File size mismatch")
-                                $errors++
-                            }
-                            elseif ($checkContents) {
-                                $sourceHash = Get-FileHash -Path $sourceFile.FullName -Algorithm SHA256
-                                $targetHash = Get-FileHash -Path $targetFile -Algorithm SHA256
-                                if ($sourceHash.Hash -ne $targetHash.Hash) {
-                                    $result.SetError("File content mismatch")
-                                    $errors++
-                                }
-                            }
-                        }
-
-                        # Track the file with its release version
-                        $fileTracker.TrackFile("$($mapping.targetFolder)\$($sourceFile.Name)"  , $release.Version, $mapping.sourceFolder, $mapping.targetFolder)
-                        $this.Logger.Information("Release $($release.Version) - $sourceFile.Name matches")
-                        
-                        $results += $result
-                        $processedFiles[$relativePath] = $true
+                    if (-not $recurse) {
+                        # Validate files in current folder only
+                        $this.ValidateFiles(
+                            $sourceFolder,
+                            $targetFolder,
+                            $release.Version,
+                            $mapping.sourceFolder,
+                            $mapping.targetFolder,
+                            $fileTracker,
+                            $processedFiles,
+                            $results,
+                            [ref]$errors,
+                            $checkContents
+                        )
+                    }
+                    else {
+                        # Process all files recursively
+                        $this.ValidateFilesRecursively(
+                            $sourceFolder,
+                            $targetFolder,
+                            $release.Version,
+                            $mapping.sourceFolder,
+                            $mapping.targetFolder,
+                            $fileTracker,
+                            $processedFiles,
+                            $results,
+                            [ref]$errors,
+                            $checkContents
+                        )
                     }
                 }
                 # Save the updated file releases to CSV
@@ -326,6 +371,59 @@ class ReleaseService {
         catch {
             $this.Logger.Error("Error in ConfirmReleaseDeployment: $_")
             throw
+        }
+    }
+
+    hidden [void] ValidateFilesRecursively(
+        [string]$sourceFolder,
+        [string]$targetFolder,
+        [string]$release,
+        [string]$sourceFolderName,
+        [string]$targetFolderName,
+        [FileTrackingService]$fileTracker,
+        [hashtable]$processedFiles,
+        [array]$results,
+        [ref]$errors,
+        [bool]$checkContents
+    ) {
+        # Validate files in current folder
+        $this.ValidateFiles(
+            $sourceFolder,
+            $targetFolder,
+            $release,
+            $sourceFolderName,
+            $targetFolderName,
+            $fileTracker,
+            $processedFiles,
+            $results,
+            $errors,
+            $checkContents
+        )
+
+        # Process subfolders recursively
+        Get-ChildItem -Path $sourceFolder -Directory | ForEach-Object {
+            $sourceSubFolder = $_.FullName
+            $relativePath = $_.Name
+            $targetSubFolder = Join-Path $targetFolder $relativePath
+
+            if (-not (Test-Path $targetSubFolder)) {
+                $this.Logger.Warning("Target subfolder not found: $targetSubFolder")
+                return
+            }
+
+            # Recursively validate files in subfolder
+            $this.ValidateFilesRecursively(
+                $sourceSubFolder,
+                $targetSubFolder,
+                $release,
+                (Join-Path $sourceFolderName $relativePath),
+                (Join-Path $targetFolderName $relativePath),
+                $fileTracker,
+                $processedFiles,
+                $results,
+                $errors,
+                $checkContents
+            )
         }
     }
 
