@@ -73,12 +73,16 @@ class ReleaseService {
     ) {
         # Copy files from root folder
         Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
-            $targetFile = Join-Path $targetFolder $_.Name
-            Copy-Item -Path $_.FullName -Destination $targetFile -Force
-            $key = "$targetFolderName\$($_.Name)"
-            $fileTracker.TrackFile($key, $release, $sourceFolderName, $targetFolderName)
-            $this.DuplicateTracker.TrackFile($key, $sourceFolderName, $targetFolderName)
-            $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
+            if ($_.Extension -notin '.exe', '.abf') {
+                $targetFile = Join-Path $targetFolder $_.Name
+                Copy-Item -Path $_.FullName -Destination $targetFile -Force
+                $key = "$targetFolderName\$($_.Name)"
+                $fileTracker.TrackFile($key, $release, $sourceFolderName, $targetFolderName)
+                $this.DuplicateTracker.TrackFile($key, $sourceFolderName, $targetFolderName)
+                $this.Logger.Information("Copied file: $($_.FullName) to $targetFile")
+            } else {
+                $this.Logger.Information("Skipped file with excluded extension: $($_.FullName)")
+            }
         }
     }
 
